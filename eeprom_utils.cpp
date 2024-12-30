@@ -3,12 +3,16 @@
  * 
  * EEPROM helper functions.
  * 
- * This software is copyright 2021 by Gary Hammond (ZL3GH). It is
- * free to use for non-commercial use.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
+ * with all the software bugs herein. It is free to use for
+ * non-commercial purposes.
  * 
- * WARNING: Use of this software could result in a universe ending
- * paradox so use at your own risk. No warranties expressed or 
- * implied.
+ * WARNING: DO NOT USE this software in any medical device or for any 
+ * other mission critical purpose.
+ * 
+ * Use of this software could result in a universe ending paradox so 
+ * use entirely at your own risk. No warranties or guarantees are 
+ * expressed or implied.
  */
 
 #include <Arduino.h>
@@ -20,8 +24,10 @@
 #include "serial_utils.h"
 
 //*************************************************************************
-unsigned long eCrc(void) {
-  const unsigned long crc_table[16] = {
+unsigned long eCrc(void)
+{
+  const unsigned long crc_table[16] =
+  {
     0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
     0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
     0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
@@ -30,7 +36,8 @@ unsigned long eCrc(void) {
 
   unsigned long crc = ~0L;
 
-  for (int index = E_SIGNATURE ; index < E_END_ADDRESS  ; ++index) {
+  for (int index = E_SIGNATURE ; index < E_END_ADDRESS  ; ++index)
+  {
     crc = crc_table[(crc ^ EEPROM[index]) & 0x0f] ^ (crc >> 4);
     crc = crc_table[(crc ^ (EEPROM[index] >> 4)) & 0x0f] ^ (crc >> 4);
     crc = ~crc;
@@ -39,22 +46,28 @@ unsigned long eCrc(void) {
 }
 
 //*************************************************************************
-void eInit() {
-  if (EEPROM.read(E_SIGNATURE) == 0x55 && EEPROM.read(E_SIGNATURE + 1) == 0xAA) {
+void eInit()
+{
+  if (EEPROM.read(E_SIGNATURE) == 0x55 && EEPROM.read(E_SIGNATURE + 1) == 0xAA)
+  {
     unsigned long crc_calc = eCrc();
     unsigned long crcSaved = 0;
 
     EEPROM.get(E_CHECKSUM, crcSaved);
   }
-  else {
+  else
+  {
     eResetDefaultValues();
   }
 }
 
 //*************************************************************************
-void ePrintValues() {
-  for (int i = 0; i < E_END_ADDRESS; i++) {
-    if (EEPROM.read(i) < 16) {
+void ePrintValues()
+{
+  for (int i = 0; i < E_END_ADDRESS; i++)
+  {
+    if (EEPROM.read(i) < 16)
+    {
       S_HOST.print("0");
     }
     S_HOST.print(String(EEPROM.read(i), HEX) + " ");
@@ -63,7 +76,8 @@ void ePrintValues() {
 }
 
 //*************************************************************************
-void eResetDefaultValues() {
+void eResetDefaultValues()
+{
   unsigned long crc_calc = 0;
 
   ePrintValues();
@@ -75,13 +89,15 @@ void eResetDefaultValues() {
   EEPROM.put(E_CHAR_DELAY, (unsigned int) S_DEF_CHAR_DELAY);
   EEPROM.put(E_LINE_DELAY, (unsigned int) S_DEF_LINE_DELAY);
   EEPROM.put(E_XON_XOFF, (byte) S_DEF_XON_XOFF);
+  EEPROM.put(E_SERIAL_ENABLED, (byte) S_DEF_SERIAL_ENABLED);
   eUpdateCrc();
 
   ePrintValues();
 }
 
 //*************************************************************************
-void eUpdateCrc() {
+void eUpdateCrc()
+{
   unsigned long crc_calc = 0;
 
   crc_calc = eCrc();

@@ -1,17 +1,21 @@
-#ifndef _SERIAL_UTILS.H_
-#define _SERIAL_UTILS.H_
+#ifndef _SERIAL_UTILS_H_
+#define _SERIAL_UTILS_H_
 
 /*
  * serial_utils.h
  * 
  * Serial helper functions.
  * 
- * This software is copyright 2021 by Gary Hammond (ZL3GH). It is
- * free to use for non-commercial use.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
+ * with all the software bugs herein. It is free to use for
+ * non-commercial purposes.
  * 
- * WARNING: Use of this software could result in a universe ending
- * paradox so use at your own risk. No warranties expressed or 
- * implied.
+ * WARNING: DO NOT USE this software in any medical device or for any 
+ * other mission critical purpose.
+ * 
+ * Use of this software could result in a universe ending paradox so 
+ * use entirely at your own risk. No warranties or guarantees are 
+ * expressed or implied.
  */
 
 /*************************************************************************
@@ -119,4 +123,19 @@ void sHostXonXoff(const bool value);
  *************************************************************************/
 bool sHostGetXonXoff();
 
-#endif // _SERIAL_UTILS.H_
+/*************************************************************************
+ * sHostEnabled
+ * 
+ * Turns on or off serial communications. Pass in 'true' to turn on
+ * or 'false' to turn off.
+ *************************************************************************/
+void sHostEnabled(const bool value);
+
+/*************************************************************************
+ * sHostEnabled
+ * 
+ * Returns the state of the serial communications.
+ *************************************************************************/
+bool sHostGetEnabled();
+
+#endif // _SERIAL_UTILS_H_

@@ -3,14 +3,19 @@
 /*
  * nano_def.h
  *
- * Definitions file for the Arduino Nano
+ * Definitions file for the Arduino Nano when used with the
+ * Garmic-001 carrier board.
  * 
- * This software is copyright 2021 by Gary Hammond (ZL3GH). It is
- * free to use for non-commercial use.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
+ * with all the software bugs herein. It is free to use for
+ * non-commercial purposes.
  * 
- * WARNING: Use of this software could result in a universe ending
- * paradox so use at your own risk. No warranties expressed or 
- * implied.
+ * WARNING: DO NOT USE this software in any medical device or for any 
+ * other mission critical purpose.
+ * 
+ * Use of this software could result in a universe ending paradox so 
+ * use entirely at your own risk. No warranties or guarantees are 
+ * expressed or implied.
  */
 
 // Arduino Nano Pins
@@ -23,6 +28,19 @@
 #define D6          6
 #define D7          7
 #define D8          8
+#define D9          9
+#define D10         10
+#define D11         11
+#define D12         12
+#define D13         13
+#define D14         14
+#define D15         15
+
+#define AT_CLK      D3
+#define AT_DATA     D9
+
+#define XT_CLK      D13 // J10 MOSI pin
+#define XT_DATA     D14 // J10 SS pin
 
 #define CTS         D2
 #define LED_0       D8

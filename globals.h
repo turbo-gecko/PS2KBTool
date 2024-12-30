@@ -1,16 +1,20 @@
-#ifndef _GLOBALS.H_
-#define _GLOBALS.H_
+#ifndef _GLOBALS_H_
+#define _GLOBALS_H_
 /*
  * globals.h
  *
  * Global definitions file for the Arduino Nano
  * 
- * This software is copyright 2021 by Gary Hammond (ZL3GH). It is
- * free to use for non-commercial use.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
+ * with all the software bugs herein. It is free to use for
+ * non-commercial purposes.
  * 
- * WARNING: Use of this software could result in a universe ending
- * paradox so use at your own risk. No warranties expressed or 
- * implied.
+ * WARNING: DO NOT USE this software in any medical device or for any 
+ * other mission critical purpose.
+ * 
+ * Use of this software could result in a universe ending paradox so 
+ * use entirely at your own risk. No warranties or guarantees are 
+ * expressed or implied.
  */
 
 #include "nano_def.h"
@@ -20,7 +24,7 @@
  *************************************************************************/
 
 // Software info
-const String  VERSION               = "00.00.01";
+const String  VERSION               = "00.01.00";
 
 // ASCII key definitions
 #define       CTRL_C                3       // Ascii code for control-c
@@ -35,6 +39,7 @@ const String  VERSION               = "00.00.01";
 #define       S_DEF_CHAR_DELAY      0       // Default host inter character delay im mSec
 #define       S_DEF_LINE_DELAY      0       // Default host inter line delay in mSec
 #define       S_DEF_XON_XOFF        0       // Default value of 1 means enabled
+#define       S_DEF_SERIAL_ENABLED  0       // Default value of 1 means enabled
 
 // EEPROM address definitions
 #define       E_CHECKSUM            0       // 4 bytes CRC32 checksum of E_SIZE bytes
@@ -45,6 +50,7 @@ const String  VERSION               = "00.00.01";
 #define       E_CHAR_DELAY          14      // 2 bytes (int) for host serial inter-character delay
 #define       E_LINE_DELAY          16      // 2 bytes (int) for host serial inter-line delay
 #define       E_XON_XOFF            18      // 1 byte (byte) for XON/XOFF enabled flag
-#define       E_END_ADDRESS         19      // End of EEPROM values
+#define       E_SERIAL_ENABLED      19      // 1 byte (byte) for serial enabled flag
+#define       E_END_ADDRESS         20      // End of EEPROM values
 
-#endif // _GLOBALS.H_
+#endif // _GLOBALS_H_
