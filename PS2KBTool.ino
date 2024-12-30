@@ -16,11 +16,14 @@
  * expressed or implied.
  */
 
+//#include "Arduino.h"
+
 #include "globals.h"
 
 #include "commands.h"
 #include "eeprom_utils.h"
 #include "serial_utils.h"
+#include "keyboard.h"
 
 /*************************************************************************
  * Variables
@@ -44,7 +47,9 @@ String last_command     = "";
 byte at_clk_count       = 0;
 byte at_clk_prev        = 0;
 byte at_data_byte       = 0;
+byte at_data_prev       = 0;
 byte at_data_temp       = 0;
+byte xt_data_byte       = 0;
 
 unsigned int at_timeout = 0;
 
@@ -190,6 +195,20 @@ void loop()
         else
         {
           S_HOST.print(at_data_byte, HEX);
+          if (at_data_byte != 0xE0)
+          {
+            S_HOST.print('/');
+            xt_data_byte = AT2XT(at_data_byte);
+            if(xt_data_byte == 0)
+            {
+              xt_data_byte = AT2XTExt(at_data_byte);
+            }
+            if (at_data_prev == 0xF0)
+            {
+              xt_data_byte = xt_data_byte + 0x80;
+            }
+            S_HOST.print(xt_data_byte, HEX);
+          }
           S_HOST.print("\t");
           if (key_release)
           {
@@ -201,6 +220,7 @@ void loop()
 
       at_data_ready = false;
       at_data_printed = true;
+      at_data_prev = at_data_byte;
 
       // re-enable the keyboard to send data
       pinMode(AT_CLK, INPUT_PULLUP);

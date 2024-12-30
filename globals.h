@@ -24,7 +24,7 @@
  *************************************************************************/
 
 // Software info
-const String  VERSION               = "00.01.00";
+const String  VERSION               = "00.02.00";
 
 // ASCII key definitions
 #define       CTRL_C                3       // Ascii code for control-c
