@@ -39,8 +39,8 @@
 #define AT_CLK      D3
 #define AT_DATA     D9
 
-#define XT_CLK      D13 // J10 MOSI pin
-#define XT_DATA     D14 // J10 SS pin
+#define XT_CLK      D11 // J10 MOSI pin
+#define XT_DATA     D10 // J10 SS pin
 
 #define CTS         D2
 #define LED_0       D8

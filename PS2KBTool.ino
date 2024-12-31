@@ -22,8 +22,8 @@
 
 #include "commands.h"
 #include "eeprom_utils.h"
-#include "serial_utils.h"
 #include "keyboard.h"
+#include "serial_utils.h"
 
 /*************************************************************************
  * Variables
@@ -31,6 +31,7 @@
 bool buffer_overflow    = false;
 bool program_mode       = false;
 
+bool at_clk_busy        = false;
 bool at_data_bit        = false;
 bool at_data_ready      = false;
 bool at_data_printed    = false;
@@ -67,11 +68,12 @@ void INT1_ISR(void)
   {
     return;
   }
+  at_clk_busy = true;
   at_clk_count++;
 
   if (at_clk_count == 1) // Start bit
   {
-    digitalWrite(LED_0, 1); // Turn on data RX LED
+    digitalWrite(LED_0, HIGH); // Turn on data RX LED
     at_data_byte = 0;
     at_data_temp = 0;
   }
@@ -92,7 +94,8 @@ void INT1_ISR(void)
   {
     at_clk_count = 0;
     at_data_ready = true;
-    digitalWrite(LED_0, 0); // Turn off data RX LED
+    at_clk_busy = false;
+    digitalWrite(LED_0, LOW); // Turn off data RX LED
   }
 }
 
@@ -161,6 +164,7 @@ void setup()
   {
     S_HOST.println("Ready...");
   }
+  //Debug
 }
 
 // the loop function runs over and over again forever
@@ -198,14 +202,25 @@ void loop()
           if (at_data_byte != 0xE0)
           {
             S_HOST.print('/');
-            xt_data_byte = AT2XT(at_data_byte);
-            if(xt_data_byte == 0)
+            if (at_data_prev == 0xE0)
             {
+              if (at_data_byte != 0x12)
+              sendXtCode(at_data_prev);
+              delayMicroseconds(500);
               xt_data_byte = AT2XTExt(at_data_byte);
             }
-            if (at_data_prev == 0xF0)
+            else
             {
-              xt_data_byte = xt_data_byte + 0x80;
+              xt_data_byte = AT2XT(at_data_byte);
+              if(xt_data_byte == 0)
+              {
+                xt_data_byte = AT2XTExt(at_data_byte);
+              }
+              if (at_data_prev == 0xF0)
+              {
+                xt_data_byte = xt_data_byte + 0x80;
+              }
+              sendXtCode(xt_data_byte);
             }
             S_HOST.print(xt_data_byte, HEX);
           }
@@ -227,6 +242,57 @@ void loop()
       isr_disabled = false;
     }
   }
+}
+
+void sendXtCode(byte sxc_code)
+{
+  // Check to see if we are processing incoming data from the AT port
+  // and wait until it has completed.
+  while (at_clk_busy); //incoming data so wait
+
+  // Disable the AT clock and stop keyboard from sending more data.
+  isr_disabled = true;
+  pinMode(AT_CLK, OUTPUT);
+  digitalWrite(AT_CLK, 0);
+
+  // Check to see if the XT clock is in use and if not, enable it.
+  pinMode(XT_CLK, OUTPUT);
+  digitalWrite(XT_CLK, HIGH);
+  pinMode(XT_DATA, OUTPUT);
+  digitalWrite(XT_CLK, HIGH);
+
+  digitalWrite(LED_100, HIGH);
+
+  // Send start bit.
+  digitalWrite(XT_DATA, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(XT_CLK, LOW);
+  delayMicroseconds(30);
+  digitalWrite(XT_CLK, HIGH);
+  delayMicroseconds(30);
+
+  // Send data.
+  for(int count = 0; count <9; count++)
+  {
+    digitalWrite(XT_DATA, bitRead(sxc_code, count));
+    delayMicroseconds(5);
+    digitalWrite(XT_CLK, LOW);
+    delayMicroseconds(30);
+    digitalWrite(XT_CLK, HIGH);
+    delayMicroseconds(30);
+  }
+
+  digitalWrite(XT_DATA, HIGH);
+
+  digitalWrite(LED_100, LOW);
+
+  // Disable the XT clock and data.
+  pinMode(XT_CLK, INPUT_PULLUP);
+  pinMode(XT_DATA, INPUT_PULLUP);
+
+  // Re-enable the AT clock.
+  pinMode(AT_CLK, INPUT_PULLUP);
+  isr_disabled = false;
 }
 
 void processCommands()
