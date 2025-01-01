@@ -22,6 +22,7 @@ void displayHelp();
 bool processCommand(const String cmdLine);
 void sHostPrompt();
 
+bool cKb101(const String param);
 bool cSerialBaudRate(const String param);
 bool cSerialCharDelay(const String param);
 bool cSerialLineDelay(const String param);

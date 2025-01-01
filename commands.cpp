@@ -22,6 +22,7 @@
 
 #include "commands.h"
 #include "eeprom_utils.h"
+#include "keyboard.h"
 #include "serial_utils.h"
 
 /*************************************************************************
@@ -75,10 +76,16 @@ bool processCommand(const String cmdLine)
   }
   else if (command.equals("?"))
   {
-    S_HOST.println(F("Serial: sbr,scd,sld,sfc,sen"));
-    S_HOST.println(F("Debug : reset,ccrc,scrc,er,ew"));
+    S_HOST.println(F("Keyboard: k101"));
+    S_HOST.println(F("Serial  : sbr,scd,sld,sfc,sen"));
+    S_HOST.println(F("Debug   : reset,ccrc,scrc,er,ew"));
     S_HOST.println(F("type 'help' for more detailed help"));
     return true;
+  }
+  // ************************* Keyboard Commands *********************************
+  else if (command.equals("k101"))
+  {
+    return cKb101(param);
   }
   // ************************* Serial Commands *********************************
   else if (command.equals("sbr"))
@@ -146,6 +153,45 @@ void sHostPrompt()
 /*************************************************************************
  * Commands.
  *************************************************************************/
+//*************************************************************************
+bool cKb101(const String param)
+{
+  if (param.length() > 0)
+  {
+    if (param.equals("on"))
+    {
+      k101Enabled(true);
+    }
+    else
+    {
+      if (param.equals("off"))
+      {
+        k101Enabled(false);
+      }
+      else
+      {
+        sHostPrintln(param + " is invalid");
+        S_HOST.println(F("Please Use either 'on' or 'off'"));
+        return false;
+      }
+    }
+  }
+  else
+  {
+    if (kGet101Enabled())
+    {
+      S_HOST.println(F("101 keys is enabled"));
+    }
+    else
+    {
+      S_HOST.println(F("101 keys is disabled"));
+    }
+    return true;
+  }
+  return false; // We should never get here.
+}
+
+//*************************************************************************
 bool cSerialBaudRate(const String param)
 {
   if (param.length() > 0)

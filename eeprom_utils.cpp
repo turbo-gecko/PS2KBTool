@@ -90,6 +90,7 @@ void eResetDefaultValues()
   EEPROM.put(E_LINE_DELAY, (unsigned int) S_DEF_LINE_DELAY);
   EEPROM.put(E_XON_XOFF, (byte) S_DEF_XON_XOFF);
   EEPROM.put(E_SERIAL_ENABLED, (byte) S_DEF_SERIAL_ENABLED);
+  EEPROM.put(E_EXT_KEYS_ENABLED, (byte) S_DEF_EXT_KEYS_ENABLED);
   eUpdateCrc();
 
   ePrintValues();

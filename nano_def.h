@@ -42,6 +42,8 @@
 #define XT_CLK      D11 // J10 MOSI pin
 #define XT_DATA     D10 // J10 SS pin
 
+#define PROG_MODE   D12 // J10 SCK pin
+
 #define CTS         D2
 #define LED_0       D8
 #define LED_25      D7

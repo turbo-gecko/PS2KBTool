@@ -15,7 +15,16 @@
  * expressed or implied.
  */
 
-#include "Arduino.h"
+#include <Arduino.h>
+#include <EEPROM.h>
+
+#include "globals.h"
+
+#include "eeprom_utils.h"
+
+bool ext_keys_enabled = false;
+
+static unsigned int i;
 
 struct key_code
 {
@@ -25,7 +34,7 @@ struct key_code
 };
 
 // Standard non-extended key codes
-const struct key_code key_table[] =
+static const struct key_code key_table[] =
 {
   {1, 0x29, 0x0E},
   {2, 0x02, 0x16},
@@ -114,32 +123,51 @@ const struct key_code key_table[] =
   {122, 0x57, 0x78},
   {123, 0x58, 0x07},
   {125, 0x46, 0x7E},
+  {0, 0x00, 0x00}
 };
 
-// Extended (pre-fixed with '0xEO) single byte key codes
-const struct key_code key_table_ext[] =
+// Extended (pre-fixed with '0xEO) single byte key codes (Not 101+ extra navigation keys)
+static const struct key_code key_table_ext[] =
 {
-  {59, 0x5B, 0x1F},
-  {62, 0x38, 0x11},
-  {63, 0x5C, 0x27},
-  {64, 0x1D, 0x14},
-  {65, 0x5D, 0x2F},
-  {75, 0x52, 0x70},
-  {76, 0x53, 0x71},
-  {79, 0x4B, 0x6B},
-  {80, 0x47, 0x6C},
-  {81, 0x4F, 0x69},
-  {83, 0x48, 0x75},
-  {84, 0x50, 0x72},
-  {85, 0x49, 0x7D},
-  {86, 0x51, 0x7A},
-  {89, 0x4D, 0x74},
-  {108, 0x1C, 0x5A},
+  {59, 0x5B, 0x1F},   // Win
+  {62, 0x38, 0x11},   // Right Alt
+  {63, 0x5C, 0x27},   // Context Menu
+  {64, 0x1D, 0x14},   // Right Shift
+  {65, 0x5D, 0x2F},   // Alt Graphics
+  {0, 0x00, 0x00}
 };
 
+// Extended (pre-fixed with '0xEO) single byte key codes 101+ extra navigation keys
+static const struct key_code key_table_ext_nav[] =
+{
+  {0, 0xF0, 0xF0},    // key up
+  {75, 0x52, 0x70},   // Insert
+  {76, 0x53, 0x71},   // Delete
+  {79, 0x4B, 0x6B},   // Left Arrow
+  {80, 0x47, 0x6C},   // Home
+  {81, 0x4F, 0x69},   // End
+  {83, 0x48, 0x75},   // Up Arrow
+  {84, 0x50, 0x72},   // Down Arrow
+  {85, 0x49, 0x7D},   // Page Up
+  {86, 0x51, 0x7A},   // Page Down
+  {89, 0x4D, 0x74},   // Right Arrow
+  {95, 0x35, 0x4A},   // Numpad /
+  {108, 0x1C, 0x5A},  // Numpad Enter
+  {0, 0x00, 0x00}
+};
+
+// Extended (pre-fixed with '0xEO) single byte key codes to have the 0xE0 stripped
+static const struct key_code key_table_ext_strip[] =
+{
+  {95, 0x35, 0x4A},   // Numpad /
+  {108, 0x1C, 0x5A},  // Numpad Enter
+  {0, 0x00, 0x00}
+};
+
+//*************************************************************************
 byte AT2XT(byte scan_code)
 {
-  for(unsigned int i = 0; i < sizeof(key_table); i++)
+  for(i = 0; i < sizeof(key_table); i++)
   {
     if (key_table[i].at_code == scan_code)
     {
@@ -149,9 +177,10 @@ byte AT2XT(byte scan_code)
   return 0;
 }
 
+//*************************************************************************
 byte AT2XTExt(byte scan_code)
 {
-  for(unsigned int i = 0; i < sizeof(key_table_ext); i++)
+  for(i = 0; i < sizeof(key_table_ext); i++)
   {
     if (key_table_ext[i].at_code == scan_code)
     {
@@ -159,4 +188,59 @@ byte AT2XTExt(byte scan_code)
     }
   }
   return 0;
+}
+
+//*************************************************************************
+byte AT2XTExtNav(byte scan_code)
+{
+  for(i = 0; i < sizeof(key_table_ext_nav); i++)
+  {
+    if (key_table_ext_nav[i].at_code == scan_code)
+    {
+      return key_table_ext_nav[i].xt_code;
+    }
+  }
+  return 0;
+}
+
+//*************************************************************************
+byte AT2XTExtStrip(byte scan_code)
+{
+  for(i = 0; i < sizeof(key_table_ext_strip); i++)
+  {
+    if (key_table_ext_strip[i].at_code == scan_code)
+    {
+      return key_table_ext_strip[i].xt_code;
+    }
+  }
+  return 0;
+}
+
+//*************************************************************************
+void k101Enabled(const bool value)
+{
+  if (value)
+  {
+    ext_keys_enabled = 1;
+  }
+  else
+  {
+    ext_keys_enabled = 0;
+  }
+  EEPROM.put(E_EXT_KEYS_ENABLED, ext_keys_enabled);
+  eUpdateCrc();
+}
+
+//*************************************************************************
+bool kGet101Enabled()
+{
+  EEPROM.get(E_EXT_KEYS_ENABLED, ext_keys_enabled);
+  if (ext_keys_enabled == 0)
+  {
+    return false;
+  }
+  else
+  {
+    return true;
+  }
 }

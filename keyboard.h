@@ -19,7 +19,11 @@
  */
 
 byte AT2XT(byte);
-
 byte AT2XTExt(byte);
+byte AT2XTExtNav(byte);
+byte AT2XTExtStrip(byte);
+
+void k101Enabled(const bool value);
+bool kGet101Enabled();
 
 #endif // _KEYBOARD_H_
