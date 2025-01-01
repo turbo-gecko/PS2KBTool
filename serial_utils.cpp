@@ -23,7 +23,7 @@
 #include "serial_utils.h"
 
 bool control_c            = false;
-bool serial_enabled       = true;
+bool s_serial_enabled     = true;
 
 byte in_byte;
 byte flow_control         = S_DEF_XON_XOFF;
@@ -232,21 +232,21 @@ void sHostEnabled(const bool value)
 {
   if (value)
   {
-    serial_enabled = 1;
+    s_serial_enabled = 1;
   }
   else
   {
-    serial_enabled = 0;
+    s_serial_enabled = 0;
   }
-  EEPROM.put(E_SERIAL_ENABLED, serial_enabled);
+  EEPROM.put(E_SERIAL_ENABLED, s_serial_enabled);
   eUpdateCrc();
 }
 
 //*************************************************************************
 bool sHostGetEnabled()
 {
-  EEPROM.get(E_SERIAL_ENABLED, serial_enabled);
-  if (serial_enabled == 0)
+  EEPROM.get(E_SERIAL_ENABLED, s_serial_enabled);
+  if (s_serial_enabled == 0)
   {
     return false;
   }

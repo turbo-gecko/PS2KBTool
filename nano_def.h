@@ -45,11 +45,11 @@
 #define PROG_MODE   D12 // J10 SCK pin
 
 #define CTS         D2
-#define LED_0       D8
-#define LED_25      D7
-#define LED_50      D6
-#define LED_75      D5
-#define LED_100     D4
+#define LED_1       D8
+#define LED_2       D7
+#define LED_3       D6
+#define LED_4       D5
+#define LED_5       D4
 
 #define BUFFER_SIZE 1024  // The general upper limit is ~1536 bytes
 //#define BUFFER_SIZE 512  // The general upper limit is ~1536 bytes

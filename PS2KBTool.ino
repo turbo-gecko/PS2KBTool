@@ -35,12 +35,13 @@ bool at_clk_busy        = false;
 bool at_data_bit        = false;
 bool at_data_ready      = false;
 bool at_data_printed    = false;
+bool ext_101_enabled    = false;
 bool ext_pressed        = false;
 bool ext_nav_pressed    = false;
 bool ext_strip_pressed  = false;
 bool isr_disabled       = false;
 bool key_release        = false;
-bool ext_101_enabled    = false;
+bool serial_enabled     = false;
 
 char buffer[BUFFER_SIZE];
 char rx_byte            = 0;
@@ -77,11 +78,11 @@ void setup()
   pinMode(PROG_MODE, INPUT_PULLUP);
 
   // Initialise output pins.
-  pinMode(LED_0, OUTPUT);
-  pinMode(LED_25, OUTPUT);
-  pinMode(LED_50, OUTPUT);
-  pinMode(LED_75, OUTPUT);
-  pinMode(LED_100, OUTPUT);
+  pinMode(LED_1, OUTPUT);
+  pinMode(LED_2, OUTPUT);
+  pinMode(LED_3, OUTPUT);
+  pinMode(LED_4, OUTPUT);
+  pinMode(LED_5, OUTPUT);
  
   // Set up the interrupt for the AT_CLK line
   attachInterrupt(digitalPinToInterrupt(AT_CLK), INT1_ISR, FALLING);
@@ -89,38 +90,37 @@ void setup()
   // Initialise EEPROM
   eInit();
 
-  // Initialise host serial port
-  S_HOST.begin(sHostGetBaudRate());
-
   int temp1 = digitalRead(PROG_MODE);
   if (temp1 == LOW)
   {
     program_mode = true;
 
-    digitalWrite(LED_75, HIGH);
-    digitalWrite(LED_100, HIGH);
+    digitalWrite(LED_4, HIGH);
+    digitalWrite(LED_5, HIGH);
 
-    // Debug
-    if (sHostGetEnabled())
-    {
-      S_HOST.println("Programming mode...");
-    }
+    serial_enabled = true;
+    S_HOST.begin(sHostGetBaudRate());
+    S_HOST.println("Programming mode...");
   }
   else
   {
     program_mode = false;
+
+    serial_enabled = sHostGetEnabled();
+    if (serial_enabled)
+    {
+      // Initialise host serial port
+      S_HOST.begin(sHostGetBaudRate());
+    }
   }
 
   // Get extended 101 key enabled state
   ext_101_enabled = kGet101Enabled();
-  //Debug
 }
 
-// the loop function runs over and over again forever
+// The loop function runs over and over again forever
 void loop()
 {
-  //Debug
-
   if (program_mode)
   {
     processCommands();
@@ -196,7 +196,8 @@ void processKeyPress()
     // process data byte
     if (sHostGetEnabled())
     {
-      if (at_data_byte == 0xF0) // Key release?
+      // Key release?
+      if (at_data_byte == 0xF0)
       {
         if (ext_101_enabled)
         {
@@ -206,16 +207,25 @@ void processKeyPress()
             delayMicroseconds(10);
           }
         }
-        S_HOST.print(at_data_byte, HEX);
-        S_HOST.print("\t");
+        if (serial_enabled)
+        {
+          S_HOST.print(at_data_byte, HEX);
+          S_HOST.print("\t");
+        }
         key_release = true;
       }
       else
       {
-        S_HOST.print(at_data_byte, HEX);
+        if (serial_enabled)
+        {
+          S_HOST.print(at_data_byte, HEX);
+        }
         if (at_data_byte != 0xE0)
         {
-          S_HOST.print('/');
+          if (serial_enabled)
+          {
+            S_HOST.print('/');
+          }
           if (at_data_prev == 0xE0) // Is the previous byte the ext code?
           {
             if (at_data_byte != 0x12) // Not the E0 12 ext sequence
@@ -253,7 +263,10 @@ void processKeyPress()
                 }
               }
             }
-            S_HOST.print(xt_data_byte, HEX);
+            if (serial_enabled)
+            {
+              S_HOST.print(xt_data_byte, HEX);
+            }
             if (xt_data_byte != 0x00)
             {
               sendXtCode(xt_data_byte);
@@ -288,14 +301,23 @@ void processKeyPress()
               }
               xt_data_byte = xt_data_byte + 0x80;
             }
-            S_HOST.print(xt_data_byte, HEX);
+            if (serial_enabled)
+            {
+              S_HOST.print(xt_data_byte, HEX);
+            }
             sendXtCode(xt_data_byte);
           }
         }
-        S_HOST.print("\t");
+        if (serial_enabled)
+        {
+          S_HOST.print("\t");
+        }
         if (key_release)
         {
-          S_HOST.println("");
+          if (serial_enabled)
+          {
+            S_HOST.println("");
+          }
           key_release = false;
         }
       }
@@ -318,18 +340,13 @@ void sendXtCode(byte sxc_code)
   // and wait until it has completed.
   while (at_clk_busy); //incoming data so wait
 
-  // Disable the AT clock and stop keyboard from sending more data.
-  //isr_disabled = true;
-  //pinMode(AT_CLK, OUTPUT);
-  //digitalWrite(AT_CLK, 0);
-
   // Check to see if the XT clock is in use and if not, enable it.
   pinMode(XT_CLK, OUTPUT);
   digitalWrite(XT_CLK, HIGH);
   pinMode(XT_DATA, OUTPUT);
   digitalWrite(XT_CLK, HIGH);
 
-  digitalWrite(LED_100, HIGH);
+  digitalWrite(LED_2, HIGH);
 
   // Send start bit.
   digitalWrite(XT_DATA, HIGH);
@@ -352,20 +369,18 @@ void sendXtCode(byte sxc_code)
 
   digitalWrite(XT_DATA, HIGH);
 
-  digitalWrite(LED_100, LOW);
+  digitalWrite(LED_2, LOW);
 
   // Disable the XT clock and data.
   pinMode(XT_CLK, INPUT_PULLUP);
   pinMode(XT_DATA, INPUT_PULLUP);
 
-  // Re-enable the AT clock.
-  //pinMode(AT_CLK, INPUT_PULLUP);
-  //isr_disabled = false;
-
-  //Debug
-  S_HOST.print("[");
-  S_HOST.print(sxc_code, HEX);
-  S_HOST.print("]");
+  if (serial_enabled)
+  {
+    S_HOST.print("[");
+    S_HOST.print(sxc_code, HEX);
+    S_HOST.print("]");
+  }
 }
 
 /*************************************************************************
@@ -382,7 +397,7 @@ void INT1_ISR(void)
 
   if (at_clk_count == 1) // Start bit
   {
-    digitalWrite(LED_0, HIGH); // Turn on data RX LED
+    digitalWrite(LED_1, HIGH); // Turn on data RX LED
     at_data_byte = 0;
     at_data_temp = 0;
   }
@@ -404,7 +419,7 @@ void INT1_ISR(void)
     at_clk_count = 0;
     at_data_ready = true;
     at_clk_busy = false;
-    digitalWrite(LED_0, LOW); // Turn off data RX LED
+    digitalWrite(LED_1, LOW); // Turn off data RX LED
   }
 }
 
