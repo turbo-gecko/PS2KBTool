@@ -51,9 +51,13 @@ void eInit()
   if (EEPROM.read(E_SIGNATURE) == 0x55 && EEPROM.read(E_SIGNATURE + 1) == 0xAA)
   {
     unsigned long crc_calc = eCrc();
-    unsigned long crcSaved = 0;
+    unsigned long crc_saved = 0;
 
-    EEPROM.get(E_CHECKSUM, crcSaved);
+    EEPROM.get(E_CHECKSUM, crc_saved);
+    if (crc_calc != crc_saved)
+    {
+      eResetDefaultValues();
+    }
   }
   else
   {
@@ -78,14 +82,14 @@ void ePrintValues()
 //*************************************************************************
 void eResetDefaultValues()
 {
-  unsigned long crc_calc = 0;
+  //unsigned long crc_calc = 0;
 
   ePrintValues();
 
   EEPROM.put(E_SIGNATURE, (unsigned int) 0xAA55);
   EEPROM.put(E_VERSION, (unsigned int) 0x0001);
   EEPROM.put(E_SIZE, (unsigned int) (E_END_ADDRESS - 4));
-  EEPROM.put(E_HOST_BAUD, (unsigned int) S_DEF_HOST_BAUD);
+  EEPROM.put(E_HOST_BAUD, (unsigned long) S_DEF_HOST_BAUD);
   EEPROM.put(E_CHAR_DELAY, (unsigned int) S_DEF_CHAR_DELAY);
   EEPROM.put(E_LINE_DELAY, (unsigned int) S_DEF_LINE_DELAY);
   EEPROM.put(E_XON_XOFF, (byte) S_DEF_XON_XOFF);

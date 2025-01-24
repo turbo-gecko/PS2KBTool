@@ -111,15 +111,15 @@ bool processCommand(const String cmdLine)
   // ************************* Debug Commands **********************************
   else if (command.equals("ccrc"))
   {
-    unsigned long crcCalc = eCrc();
-    sHostPrintln("Calculated CRC = " + String(crcCalc, HEX));
+    unsigned long crc_calc = eCrc();
+    sHostPrintln("Calculated CRC = " + String(crc_calc, HEX));
     return true;
   }
   else if (command.equals("scrc"))
   {
-    unsigned long crcSaved = 0;
-    EEPROM.get(E_CHECKSUM, crcSaved);
-    sHostPrintln("Saved CRC = " + String(crcSaved, HEX));
+    unsigned long crc_saved = 0;
+    EEPROM.get(E_CHECKSUM, crc_saved);
+    sHostPrintln("Saved CRC = " + String(crc_saved, HEX));
     return true;
   }
   else if (command.equals("er"))

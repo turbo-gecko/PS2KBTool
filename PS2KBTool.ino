@@ -16,7 +16,14 @@
  * expressed or implied.
  */
 
-//#include <Arduino.h>
+/*************************************************************************
+ * Build options
+ *************************************************************************/
+// Uncomment if using the developer edition to enable the extra LED's and
+// and switches.
+//#define DEV_BOARD
+
+//*************************************************************************
 
 #include "globals.h"
 
@@ -71,32 +78,54 @@ void setup()
 {
   // Initialise input pins
   pinMode(CTS, INPUT_PULLUP);
-  pinMode(AT_CLK, INPUT_PULLUP);
+
+  pinMode(AT_CLK, OUTPUT);
+  digitalWrite(AT_CLK, LOW);
   pinMode(AT_DATA, INPUT_PULLUP);
   pinMode(XT_CLK, INPUT_PULLUP);
   pinMode(XT_DATA, INPUT_PULLUP);
-  pinMode(PROG_MODE, INPUT_PULLUP);
+  pinMode(CONFIG_1, INPUT_PULLUP);
+  pinMode(CONFIG_2, INPUT_PULLUP);
 
-  // Initialise output pins.
-  pinMode(LED_1, OUTPUT);
-  pinMode(LED_2, OUTPUT);
-  pinMode(LED_3, OUTPUT);
-  pinMode(LED_4, OUTPUT);
-  pinMode(LED_5, OUTPUT);
- 
+#ifdef DEV_BOARD
+  // Initialise output pins for the LED's
+  pinMode(LED_AT_CLK, OUTPUT);
+  pinMode(LED_AT_DATA, OUTPUT);
+  pinMode(LED_NUM, OUTPUT);
+  pinMode(LED_CAPS, OUTPUT);
+  pinMode(LED_SCROLL, OUTPUT);
+
+  // Flash the LED's
+  digitalWrite(LED_AT_CLK, HIGH);
+  digitalWrite(LED_AT_DATA, HIGH);
+  digitalWrite(LED_NUM, HIGH);
+  digitalWrite(LED_CAPS, HIGH);
+  digitalWrite(LED_SCROLL, HIGH);
+
+  delay (500);
+
+  digitalWrite(LED_AT_CLK, LOW);
+  digitalWrite(LED_AT_DATA, LOW);
+  digitalWrite(LED_NUM, LOW);
+  digitalWrite(LED_CAPS, LOW);
+  digitalWrite(LED_SCROLL, LOW);
+#endif
+
+  pinMode(AT_CLK, INPUT_PULLUP);
   // Set up the interrupt for the AT_CLK line
   attachInterrupt(digitalPinToInterrupt(AT_CLK), INT1_ISR, FALLING);
 
   // Initialise EEPROM
   eInit();
 
-  int temp1 = digitalRead(PROG_MODE);
+  int temp1 = digitalRead(CONFIG_1);
   if (temp1 == LOW)
   {
     program_mode = true;
 
-    digitalWrite(LED_4, HIGH);
-    digitalWrite(LED_5, HIGH);
+#ifdef DEV_BOARD
+    digitalWrite(LED_SCROLL, HIGH);
+#endif
 
     serial_enabled = true;
     S_HOST.begin(sHostGetBaudRate());
@@ -134,6 +163,9 @@ void loop()
 //*************************************************************************
 void processCommands()
 {
+#ifdef DEV_BOARD
+  checkDevOptions();
+#endif
   // Process serial input from the host port
   if (S_HOST.available() > 0)
   {
@@ -346,7 +378,9 @@ void sendXtCode(byte sxc_code)
   pinMode(XT_DATA, OUTPUT);
   digitalWrite(XT_CLK, HIGH);
 
-  digitalWrite(LED_2, HIGH);
+#ifdef DEV_BOARD
+  digitalWrite(LED_AT_DATA, HIGH);
+#endif
 
   // Send start bit.
   digitalWrite(XT_DATA, HIGH);
@@ -369,7 +403,9 @@ void sendXtCode(byte sxc_code)
 
   digitalWrite(XT_DATA, HIGH);
 
-  digitalWrite(LED_2, LOW);
+#ifdef DEV_BOARD
+  digitalWrite(LED_AT_DATA, LOW);
+#endif
 
   // Disable the XT clock and data.
   pinMode(XT_CLK, INPUT_PULLUP);
@@ -397,7 +433,9 @@ void INT1_ISR(void)
 
   if (at_clk_count == 1) // Start bit
   {
-    digitalWrite(LED_1, HIGH); // Turn on data RX LED
+#ifdef DEV_BOARD
+    digitalWrite(LED_AT_CLK, HIGH); // Turn on data RX LED
+#endif
     at_data_byte = 0;
     at_data_temp = 0;
   }
@@ -419,7 +457,47 @@ void INT1_ISR(void)
     at_clk_count = 0;
     at_data_ready = true;
     at_clk_busy = false;
-    digitalWrite(LED_1, LOW); // Turn off data RX LED
+#ifdef DEV_BOARD
+    digitalWrite(LED_AT_CLK, LOW); // Turn off data RX LED
+#endif
   }
 }
 
+//*************************************************************************
+#ifdef DEV_BOARD
+void checkDevOptions(void)
+{
+  if (analogRead(A0) < 128)
+  {
+    digitalWrite(LED_AT_CLK, HIGH);
+  }
+  else
+  {
+    digitalWrite(LED_AT_CLK, LOW);
+  }
+  if (analogRead(A1) < 128)
+  {
+    digitalWrite(LED_AT_DATA, HIGH);
+  }
+  else
+  {
+    digitalWrite(LED_AT_DATA, LOW);
+  }
+  if (analogRead(A2) < 128)
+  {
+    digitalWrite(LED_NUM, HIGH);
+  }
+  else
+  {
+    digitalWrite(LED_NUM, LOW);
+  }
+  if (analogRead(A3) < 128)
+  {
+    digitalWrite(LED_CAPS, HIGH);
+  }
+  else
+  {
+    digitalWrite(LED_CAPS, LOW);
+  }
+}
+#endif
