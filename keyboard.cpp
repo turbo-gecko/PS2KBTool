@@ -167,40 +167,52 @@ static const struct key_code key_table_ext_strip[] =
 //*************************************************************************
 byte AT2XT(byte scan_code)
 {
+  static byte xt_code;
+  xt_code = 0;
+
   for(i = 0; i < sizeof(key_table); i++)
   {
     if (key_table[i].at_code == scan_code)
     {
-      return key_table[i].xt_code;
+      xt_code = key_table[i].xt_code;
+      break;
     }
   }
-  return 0;
+  return xt_code;
 }
 
 //*************************************************************************
 byte AT2XTExt(byte scan_code)
 {
+  static byte xt_code;
+  xt_code = 0;
+
   for(i = 0; i < sizeof(key_table_ext); i++)
   {
     if (key_table_ext[i].at_code == scan_code)
     {
-      return key_table_ext[i].xt_code;
+      xt_code = key_table_ext[i].xt_code;
+      break;
     }
   }
-  return 0;
+  return xt_code;
 }
 
 //*************************************************************************
 byte AT2XTExtNav(byte scan_code)
 {
+  static byte xt_code;
+  xt_code = 0;
+
   for(i = 0; i < sizeof(key_table_ext_nav); i++)
   {
     if (key_table_ext_nav[i].at_code == scan_code)
     {
-      return key_table_ext_nav[i].xt_code;
+      xt_code = key_table_ext_nav[i].xt_code;
+      break;
     }
   }
-  return 0;
+  return xt_code;
 }
 
 //*************************************************************************

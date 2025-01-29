@@ -56,9 +56,9 @@
 #ifdef DEV_BOARD
 #define LED_AT_CLK    D8
 #define LED_AT_DATA   D7
-#define LED_NUM       D6
-#define LED_CAPS      D5
-#define LED_SCROLL    D4
+#define LED_XT_CLK    D6
+#define LED_XT_DATA   D5
+#define LED_PROG      D4
 #endif
 
 #define BUFFER_SIZE   1024  // The general upper limit is ~1536 bytes

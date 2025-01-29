@@ -56,6 +56,12 @@ const String  VERSION                 = "00.04.01";
 #define E_END_ADDRESS           21      // End of EEPROM values
 
 // Keyboard definitions
-#define K_TX_DELAY              100     // Minimum time in uS between sending adjacent keyboard bytes
+#define AT_BIT_DELAY            30      // Half AT_CLK bit time
+#define AT_NEXT_DELAY           3       // Wait period after sending byte to the AT keyboard
+#define AT_START_DELAY          5       // Settling period after changing AT_CLK before changing AT_DATA
+
+#define XT_BIT_DELAY            30      // Half XT_CLK bit time
+#define XT_NEXT_DELAY           100     // Wait period after sending byte to the XT keyboard
+#define XT_START_DELAY          5       // Settling period after changing XT_CLK before changing XT_DATA
 
 #endif // _GLOBALS_H_

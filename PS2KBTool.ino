@@ -21,7 +21,7 @@
  *************************************************************************/
 // Uncomment if using the developer edition to enable the extra LED's and
 // and switches.
-//#define DEV_BOARD
+#define DEV_BOARD
 
 //*************************************************************************
 
@@ -50,6 +50,10 @@ bool isr_disabled       = false;
 bool key_release        = false;
 bool serial_enabled     = false;
 
+bool caps_lock          = false;
+bool num_lock           = false;
+bool scroll_lock        = false;
+
 char buffer[BUFFER_SIZE];
 char rx_byte            = 0;
 char tx_byte            = 0;
@@ -64,6 +68,9 @@ byte at_data_prev       = 0;
 byte at_data_temp       = 0;
 byte xt_data_byte       = 0;
 
+byte kb_leds            = 0;
+byte kb_leds_prev       = 0;
+
 unsigned int at_timeout = 0;
 
 unsigned int count      = 0;
@@ -72,15 +79,22 @@ unsigned int peak_count = 0;
 unsigned int tail       = 0;
 
 /*************************************************************************
+ * Macro's
+ *************************************************************************/
+#define LOG(x) if (serial_enabled){S_HOST.print((x));}
+#define LOG_HEX(x) if (serial_enabled){S_HOST.print((x), HEX);}
+
+/*************************************************************************
  * Setup
  *************************************************************************/
 void setup()
 {
-  // Initialise input pins
-  pinMode(CTS, INPUT_PULLUP);
-
+  // Stop KB from sending data
   pinMode(AT_CLK, OUTPUT);
   digitalWrite(AT_CLK, LOW);
+
+  // Initialise input pins
+  pinMode(CTS, INPUT_PULLUP);
   pinMode(AT_DATA, INPUT_PULLUP);
   pinMode(XT_CLK, INPUT_PULLUP);
   pinMode(XT_DATA, INPUT_PULLUP);
@@ -91,29 +105,25 @@ void setup()
   // Initialise output pins for the LED's
   pinMode(LED_AT_CLK, OUTPUT);
   pinMode(LED_AT_DATA, OUTPUT);
-  pinMode(LED_NUM, OUTPUT);
-  pinMode(LED_CAPS, OUTPUT);
-  pinMode(LED_SCROLL, OUTPUT);
+  pinMode(LED_XT_CLK, OUTPUT);
+  pinMode(LED_XT_DATA, OUTPUT);
+  pinMode(LED_PROG, OUTPUT);
 
   // Flash the LED's
   digitalWrite(LED_AT_CLK, HIGH);
   digitalWrite(LED_AT_DATA, HIGH);
-  digitalWrite(LED_NUM, HIGH);
-  digitalWrite(LED_CAPS, HIGH);
-  digitalWrite(LED_SCROLL, HIGH);
+  digitalWrite(LED_XT_CLK, HIGH);
+  digitalWrite(LED_XT_DATA, HIGH);
+  digitalWrite(LED_PROG, HIGH);
 
   delay (500);
 
   digitalWrite(LED_AT_CLK, LOW);
   digitalWrite(LED_AT_DATA, LOW);
-  digitalWrite(LED_NUM, LOW);
-  digitalWrite(LED_CAPS, LOW);
-  digitalWrite(LED_SCROLL, LOW);
+  digitalWrite(LED_XT_CLK, LOW);
+  digitalWrite(LED_XT_DATA, LOW);
+  digitalWrite(LED_PROG, LOW);
 #endif
-
-  pinMode(AT_CLK, INPUT_PULLUP);
-  // Set up the interrupt for the AT_CLK line
-  attachInterrupt(digitalPinToInterrupt(AT_CLK), INT1_ISR, FALLING);
 
   // Initialise EEPROM
   eInit();
@@ -124,7 +134,7 @@ void setup()
     program_mode = true;
 
 #ifdef DEV_BOARD
-    digitalWrite(LED_SCROLL, HIGH);
+    digitalWrite(LED_PROG, HIGH);
 #endif
 
     serial_enabled = true;
@@ -141,6 +151,37 @@ void setup()
       // Initialise host serial port
       S_HOST.begin(sHostGetBaudRate());
     }
+
+    // Enable the KB
+    pinMode(AT_CLK, INPUT_PULLUP);
+    delay(10);
+
+    sendAtCode(0xFF);
+    delay(500);
+    sendAtCode(0xED);
+    delay(AT_NEXT_DELAY);
+    sendAtCode(0x02);
+    delay(250);
+    sendAtCode(0xED);
+    delay(AT_NEXT_DELAY);
+    sendAtCode(0x04);
+    delay(250);
+    sendAtCode(0xED);
+    delay(AT_NEXT_DELAY);
+    sendAtCode(0x01);
+    delay(250);
+    sendAtCode(0xED);
+    delay(AT_NEXT_DELAY);
+    sendAtCode(0x00);
+    LOG ("\n");
+
+    // Set up the interrupt for the AT_CLK line
+    attachInterrupt(digitalPinToInterrupt(AT_CLK), INT1_ISR, FALLING);
+    at_data_ready = false;
+    at_clk_count = 0;
+#ifdef DEV_BOARD
+    digitalWrite(LED_AT_CLK, LOW); // Turn off AT_CLK LED
+#endif
   }
 
   // Get extended 101 key enabled state
@@ -226,39 +267,40 @@ void processKeyPress()
     digitalWrite(AT_CLK, 0);
     
     // process data byte
-    if (sHostGetEnabled())
+    switch(at_data_byte)
     {
-      // Key release?
-      if (at_data_byte == 0xF0)
-      {
+      case 0xAA: // BAT from KB
+        LOG ("\n");
+        LOG_HEX(at_data_byte);
+        LOG (" <BAT>\n\n");
+        break;
+
+      case 0xF0: // Key release
         if (ext_101_enabled)
         {
           if (at_data_prev == 0xE0)
           {
             sendXtCode(at_data_prev);
-            delayMicroseconds(10);
+            delayMicroseconds(XT_NEXT_DELAY);
           }
         }
-        if (serial_enabled)
-        {
-          S_HOST.print(at_data_byte, HEX);
-          S_HOST.print("\t");
-        }
+        LOG_HEX (at_data_byte);
+        LOG ("\t");
         key_release = true;
-      }
-      else
-      {
-        if (serial_enabled)
+        break;
+
+      case 0xFA: // Ack from KB
+        LOG ("\n");
+        LOG_HEX(at_data_byte);
+        LOG (" <ACK>\n\n");
+        break;
+
+      default:
+        LOG_HEX (at_data_byte);
+        if (at_data_byte != 0xE0) // Current scan code is not the ext code
         {
-          S_HOST.print(at_data_byte, HEX);
-        }
-        if (at_data_byte != 0xE0)
-        {
-          if (serial_enabled)
-          {
-            S_HOST.print('/');
-          }
-          if (at_data_prev == 0xE0) // Is the previous byte the ext code?
+          LOG ('/');
+          if (at_data_prev == 0xE0) // Is the previous scan code the ext code?
           {
             if (at_data_byte != 0x12) // Not the E0 12 ext sequence
             {
@@ -267,7 +309,7 @@ void processKeyPress()
               {
                 ext_pressed = true;
                 sendXtCode(at_data_prev);  // so send the E0
-                delayMicroseconds(K_TX_DELAY);
+                delayMicroseconds(XT_NEXT_DELAY);
               }
               else
               {
@@ -278,7 +320,7 @@ void processKeyPress()
                   if (ext_101_enabled) // Allow the ext keys
                   {
                     sendXtCode(at_data_prev); // so send the E0
-                    delayMicroseconds(K_TX_DELAY);
+                    delayMicroseconds(XT_NEXT_DELAY);
                   }
                   else
                   {
@@ -295,10 +337,7 @@ void processKeyPress()
                 }
               }
             }
-            if (serial_enabled)
-            {
-              S_HOST.print(xt_data_byte, HEX);
-            }
+            LOG_HEX (xt_data_byte);
             if (xt_data_byte != 0x00)
             {
               sendXtCode(xt_data_byte);
@@ -319,7 +358,7 @@ void processKeyPress()
                 if(!ext_strip_pressed)
                 {
                   sendXtCode(0xE0); // so send the E0
-                  delayMicroseconds(K_TX_DELAY);
+                  delayMicroseconds(XT_NEXT_DELAY);
                 }
               }
               if (ext_nav_pressed)
@@ -328,31 +367,78 @@ void processKeyPress()
                 if (ext_101_enabled)
                 {
                   sendXtCode(0xE0); // so send the E0
-                  delayMicroseconds(K_TX_DELAY);
+                  delayMicroseconds(XT_NEXT_DELAY);
                 }
               }
               xt_data_byte = xt_data_byte + 0x80;
             }
-            if (serial_enabled)
+            LOG_HEX (xt_data_byte);
+            if (xt_data_byte != 0)
             {
-              S_HOST.print(xt_data_byte, HEX);
+              sendXtCode(xt_data_byte);
             }
-            sendXtCode(xt_data_byte);
+
+            switch(at_data_byte)
+            {
+              case 0x58: // Caps lock
+                if (at_data_prev == 0xF0)
+                {
+                  if (bitRead(kb_leds, 2))
+                  {
+                    bitClear(kb_leds, 2);
+                  }
+                  else
+                  {
+                    bitSet(kb_leds, 2);
+                  }
+                }
+                break;
+
+              case 0x77: // Num lock
+                if (at_data_prev == 0xF0)
+                {
+                  if (bitRead(kb_leds, 1))
+                  {
+                    bitClear(kb_leds, 1);
+                  }
+                  else
+                  {
+                    bitSet(kb_leds, 1);
+                  }
+                }
+                break;
+
+              case 0x7E: // Scroll lock
+                if (at_data_prev == 0xF0)
+                {
+                  if (bitRead(kb_leds, 0))
+                  {
+                    bitClear(kb_leds, 0);
+                  }
+                  else
+                  {
+                    bitSet(kb_leds, 0);
+                  }
+                }
+                break;
+
+              default:
+                break;
+            }
+            if(kb_leds != kb_leds_prev)
+            {
+              updateKbLeds();
+              kb_leds_prev = kb_leds;
+            }
           }
         }
-        if (serial_enabled)
-        {
-          S_HOST.print("\t");
-        }
+        LOG ("\t");
         if (key_release)
         {
-          if (serial_enabled)
-          {
-            S_HOST.println("");
-          }
+          LOG ("\n");
           key_release = false;
         }
-      }
+        break;
     }
 
     at_data_ready = false;
@@ -363,6 +449,83 @@ void processKeyPress()
     pinMode(AT_CLK, INPUT_PULLUP);
     isr_disabled = false;
   }
+}
+
+//*************************************************************************
+void sendAtCode(byte sac_code)
+{
+  static byte parity;
+  parity = 0;
+  
+  // Check to see if we are processing incoming data from the AT port
+  // and wait until it has completed.
+  while (at_clk_busy); //incoming data so wait
+
+  // Check to see if the AT clock is in use and if not, enable it.
+  pinMode(AT_CLK, OUTPUT);
+  digitalWrite(AT_CLK, HIGH);
+  pinMode(AT_DATA, OUTPUT);
+  digitalWrite(AT_DATA, HIGH);
+
+#ifdef DEV_BOARD
+  digitalWrite(LED_AT_DATA, HIGH);
+#endif
+
+  // Send start bit.
+  digitalWrite(AT_CLK, LOW);
+  delayMicroseconds(AT_BIT_DELAY);
+  digitalWrite(AT_DATA, LOW);
+  delayMicroseconds(AT_BIT_DELAY);
+  // Release the AT clock and data.
+  pinMode(AT_CLK, INPUT_PULLUP);
+  delayMicroseconds(AT_BIT_DELAY);
+
+  // Send data.
+  for(int count = 0; count <8; count++)
+  {
+    while(digitalRead(AT_CLK));
+    if (bitRead(sac_code, count))
+    {
+      digitalWrite(AT_DATA, HIGH);
+      parity++;
+    }
+    else
+    {
+      digitalWrite(AT_DATA, LOW);
+    }
+    delayMicroseconds(AT_BIT_DELAY);
+    //while(!digitalRead(AT_CLK));
+    delayMicroseconds(AT_BIT_DELAY);
+  }
+
+  // Send parity bit.
+  while(digitalRead(AT_CLK));
+  parity = parity & 0x01;
+  //digitalWrite(AT_DATA, parity);
+  if(parity == 0)
+  {
+    digitalWrite(AT_DATA, HIGH);
+  }
+  else
+  {
+    digitalWrite(AT_DATA, LOW);
+  }
+  delayMicroseconds(AT_BIT_DELAY);
+  delayMicroseconds(AT_BIT_DELAY);
+
+  //digitalWrite(AT_DATA, HIGH);
+
+#ifdef DEV_BOARD
+  digitalWrite(LED_AT_DATA, LOW);
+#endif
+
+  // Release the AT clock and data.
+  pinMode(AT_CLK, INPUT_PULLUP);
+  pinMode(AT_DATA, INPUT_PULLUP);
+
+  LOG ("[A:");
+  LOG_HEX (sac_code);
+  LOG ("]");
 }
 
 //*************************************************************************
@@ -379,44 +542,53 @@ void sendXtCode(byte sxc_code)
   digitalWrite(XT_CLK, HIGH);
 
 #ifdef DEV_BOARD
-  digitalWrite(LED_AT_DATA, HIGH);
+  digitalWrite(LED_XT_CLK, HIGH);
+  digitalWrite(LED_XT_DATA, HIGH);
 #endif
 
   // Send start bit.
   digitalWrite(XT_DATA, HIGH);
-  delayMicroseconds(5);
+  delayMicroseconds(XT_START_DELAY);
   digitalWrite(XT_CLK, LOW);
-  delayMicroseconds(30);
+  delayMicroseconds(XT_BIT_DELAY);
   digitalWrite(XT_CLK, HIGH);
-  delayMicroseconds(30);
+  delayMicroseconds(XT_BIT_DELAY);
 
   // Send data.
   for(int count = 0; count <9; count++)
   {
     digitalWrite(XT_DATA, bitRead(sxc_code, count));
-    delayMicroseconds(5);
+    delayMicroseconds(XT_START_DELAY);
     digitalWrite(XT_CLK, LOW);
-    delayMicroseconds(30);
+    delayMicroseconds(XT_BIT_DELAY);
     digitalWrite(XT_CLK, HIGH);
-    delayMicroseconds(30);
+    delayMicroseconds(XT_BIT_DELAY);
   }
 
   digitalWrite(XT_DATA, HIGH);
+  delayMicroseconds(XT_BIT_DELAY);
 
 #ifdef DEV_BOARD
-  digitalWrite(LED_AT_DATA, LOW);
+  digitalWrite(LED_XT_DATA, LOW);
+  digitalWrite(LED_XT_CLK, LOW);
 #endif
 
-  // Disable the XT clock and data.
+  // Release the XT clock and data.
   pinMode(XT_CLK, INPUT_PULLUP);
   pinMode(XT_DATA, INPUT_PULLUP);
 
-  if (serial_enabled)
-  {
-    S_HOST.print("[");
-    S_HOST.print(sxc_code, HEX);
-    S_HOST.print("]");
-  }
+  LOG ("[X:");
+  LOG_HEX (sxc_code);
+  LOG ("]");
+}
+
+//*************************************************************************
+void updateKbLeds(void)
+{
+  sendAtCode(0xED);
+  delay(AT_NEXT_DELAY);
+  sendAtCode(kb_leds);
+  delay(AT_NEXT_DELAY);
 }
 
 /*************************************************************************
@@ -434,7 +606,7 @@ void INT1_ISR(void)
   if (at_clk_count == 1) // Start bit
   {
 #ifdef DEV_BOARD
-    digitalWrite(LED_AT_CLK, HIGH); // Turn on data RX LED
+    digitalWrite(LED_AT_CLK, HIGH); // Turn on AT_CLK LED
 #endif
     at_data_byte = 0;
     at_data_temp = 0;
@@ -457,8 +629,9 @@ void INT1_ISR(void)
     at_clk_count = 0;
     at_data_ready = true;
     at_clk_busy = false;
+
 #ifdef DEV_BOARD
-    digitalWrite(LED_AT_CLK, LOW); // Turn off data RX LED
+    digitalWrite(LED_AT_CLK, LOW); // Turn off AT_CLK LED
 #endif
   }
 }
@@ -485,19 +658,19 @@ void checkDevOptions(void)
   }
   if (analogRead(A2) < 128)
   {
-    digitalWrite(LED_NUM, HIGH);
+    digitalWrite(LED_XT_CLK, HIGH);
   }
   else
   {
-    digitalWrite(LED_NUM, LOW);
+    digitalWrite(LED_XT_CLK, LOW);
   }
   if (analogRead(A3) < 128)
   {
-    digitalWrite(LED_CAPS, HIGH);
+    digitalWrite(LED_XT_DATA, HIGH);
   }
   else
   {
-    digitalWrite(LED_CAPS, LOW);
+    digitalWrite(LED_XT_DATA, LOW);
   }
 }
 #endif
