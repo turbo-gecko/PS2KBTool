@@ -4,9 +4,8 @@
  * Uses an Arduino Nano to provide PS2/AT keyboard scan code
  * modifications to an XT keyboard interface.
  * 
- * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
- * with all the software bugs herein. It is free to use for
- * non-commercial purposes.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH). It is free
+ * to use for non-commercial purposes.
  * 
  * WARNING: DO NOT USE this software in any medical device or for any 
  * other mission critical purpose.
@@ -15,13 +14,6 @@
  * use entirely at your own risk. No warranties or guarantees are 
  * expressed or implied.
  */
-
-/*************************************************************************
- * Build options
- *************************************************************************/
-// Uncomment if using the developer edition to enable the extra LED's and
-// and switches.
-#define DEV_BOARD
 
 //*************************************************************************
 
@@ -35,7 +27,6 @@
 /*************************************************************************
  * Variables
  *************************************************************************/
-bool buffer_overflow    = false;
 bool program_mode       = false;
 
 bool at_clk_busy        = false;
@@ -54,7 +45,6 @@ bool caps_lock          = false;
 bool num_lock           = false;
 bool scroll_lock        = false;
 
-char buffer[BUFFER_SIZE];
 char rx_byte            = 0;
 char tx_byte            = 0;
 
@@ -72,11 +62,20 @@ byte kb_leds            = 0;
 byte kb_leds_prev       = 0;
 
 unsigned int at_timeout = 0;
-
+unsigned int b_type     = 0;
 unsigned int count      = 0;
-unsigned int head       = 0;
-unsigned int peak_count = 0;
-unsigned int tail       = 0;
+
+struct kb_timings
+{
+  byte at_bit_delay;
+  byte at_next_delay;
+  byte at_start_delay;
+  byte xt_bit_delay;
+  byte xt_next_delay;
+  byte xt_start_delay;
+};
+
+struct kb_timings kbt;
 
 /*************************************************************************
  * Macro's
@@ -94,48 +93,77 @@ void setup()
   digitalWrite(AT_CLK, LOW);
 
   // Initialise input pins
-  pinMode(CTS, INPUT_PULLUP);
+  pinMode(D2, INPUT_PULLUP);
   pinMode(AT_DATA, INPUT_PULLUP);
   pinMode(XT_CLK, INPUT_PULLUP);
   pinMode(XT_DATA, INPUT_PULLUP);
   pinMode(CONFIG_1, INPUT_PULLUP);
   pinMode(CONFIG_2, INPUT_PULLUP);
 
-#ifdef DEV_BOARD
-  // Initialise output pins for the LED's
-  pinMode(LED_AT_CLK, OUTPUT);
-  pinMode(LED_AT_DATA, OUTPUT);
-  pinMode(LED_XT_CLK, OUTPUT);
-  pinMode(LED_XT_DATA, OUTPUT);
-  pinMode(LED_PROG, OUTPUT);
+  // Initialise unused digital pins
+  pinMode(D2, INPUT_PULLUP);
+  pinMode(D14, INPUT_PULLUP);
+  pinMode(D15, INPUT_PULLUP);
 
-  // Flash the LED's
-  digitalWrite(LED_AT_CLK, HIGH);
-  digitalWrite(LED_AT_DATA, HIGH);
-  digitalWrite(LED_XT_CLK, HIGH);
-  digitalWrite(LED_XT_DATA, HIGH);
-  digitalWrite(LED_PROG, HIGH);
+  switch(kGetBoardType())
+  {
+    case B_DEV:
+      // Initialise output pins for the LED's
+      pinMode(LED_AT_CLK, OUTPUT);
+      pinMode(LED_AT_DATA, OUTPUT);
+      pinMode(LED_XT_CLK, OUTPUT);
+      pinMode(LED_XT_DATA, OUTPUT);
+      pinMode(LED_PROG, OUTPUT);
 
-  delay (500);
+      // Flash the LED's
+      digitalWrite(LED_AT_CLK, HIGH);
+      digitalWrite(LED_AT_DATA, HIGH);
+      digitalWrite(LED_XT_CLK, HIGH);
+      digitalWrite(LED_XT_DATA, HIGH);
+      digitalWrite(LED_PROG, HIGH);
 
-  digitalWrite(LED_AT_CLK, LOW);
-  digitalWrite(LED_AT_DATA, LOW);
-  digitalWrite(LED_XT_CLK, LOW);
-  digitalWrite(LED_XT_DATA, LOW);
-  digitalWrite(LED_PROG, LOW);
-#endif
+      delay (500);
+
+      digitalWrite(LED_AT_CLK, LOW);
+      digitalWrite(LED_AT_DATA, LOW);
+      digitalWrite(LED_XT_CLK, LOW);
+      digitalWrite(LED_XT_DATA, LOW);
+      digitalWrite(LED_PROG, LOW);
+      break;
+
+    case B_STD:
+      // Initialise the LED outputs as unused pins
+      pinMode(LED_AT_CLK, INPUT_PULLUP);
+      pinMode(LED_AT_DATA, INPUT_PULLUP);
+      pinMode(LED_XT_CLK, INPUT_PULLUP);
+      pinMode(LED_XT_DATA, INPUT_PULLUP);
+      pinMode(LED_PROG, INPUT_PULLUP);
+      break;
+
+    default:
+      break;
+  }
 
   // Initialise EEPROM
   eInit();
+
+  // Get keyboard delay timings from EEPROM
+  kbt.at_bit_delay = kGetDelayTimings(1);
+  kbt.at_next_delay = kGetDelayTimings(2);
+  kbt.at_start_delay = kGetDelayTimings(3);
+  kbt.xt_bit_delay = kGetDelayTimings(4);
+  kbt.xt_next_delay = kGetDelayTimings(5);
+  kbt.xt_start_delay = kGetDelayTimings(6);
 
   int temp1 = digitalRead(CONFIG_1);
   if (temp1 == LOW)
   {
     program_mode = true;
 
-#ifdef DEV_BOARD
-    digitalWrite(LED_PROG, HIGH);
-#endif
+    if (kGetBoardType() == B_DEV)
+    {
+      digitalWrite(LED_PROG, HIGH);
+    }
 
     serial_enabled = true;
     S_HOST.begin(sHostGetBaudRate());
@@ -159,19 +187,19 @@ void setup()
     sendAtCode(0xFF);
     delay(500);
     sendAtCode(0xED);
-    delay(AT_NEXT_DELAY);
+    delay(kbt.at_next_delay);
     sendAtCode(0x02);
     delay(250);
     sendAtCode(0xED);
-    delay(AT_NEXT_DELAY);
+    delay(kbt.at_next_delay);
     sendAtCode(0x04);
     delay(250);
     sendAtCode(0xED);
-    delay(AT_NEXT_DELAY);
+    delay(kbt.at_next_delay);
     sendAtCode(0x01);
     delay(250);
     sendAtCode(0xED);
-    delay(AT_NEXT_DELAY);
+    delay(kbt.at_next_delay);
     sendAtCode(0x00);
     LOG ("\n");
 
@@ -179,9 +207,10 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(AT_CLK), INT1_ISR, FALLING);
     at_data_ready = false;
     at_clk_count = 0;
-#ifdef DEV_BOARD
-    digitalWrite(LED_AT_CLK, LOW); // Turn off AT_CLK LED
-#endif
+    if (kGetBoardType() == B_DEV)
+    {
+      digitalWrite(LED_AT_CLK, LOW); // Turn off AT_CLK LED
+    }
   }
 
   // Get extended 101 key enabled state
@@ -204,9 +233,11 @@ void loop()
 //*************************************************************************
 void processCommands()
 {
-#ifdef DEV_BOARD
-  checkDevOptions();
-#endif
+  if (kGetBoardType() == B_DEV)
+  {
+    checkDevOptions();
+  }
+
   // Process serial input from the host port
   if (S_HOST.available() > 0)
   {
@@ -281,7 +312,7 @@ void processKeyPress()
           if (at_data_prev == 0xE0)
           {
             sendXtCode(at_data_prev);
-            delayMicroseconds(XT_NEXT_DELAY);
+            delayMicroseconds(kbt.xt_next_delay);
           }
         }
         LOG_HEX (at_data_byte);
@@ -309,7 +340,7 @@ void processKeyPress()
               {
                 ext_pressed = true;
                 sendXtCode(at_data_prev);  // so send the E0
-                delayMicroseconds(XT_NEXT_DELAY);
+                delayMicroseconds(kbt.xt_next_delay);
               }
               else
               {
@@ -320,7 +351,7 @@ void processKeyPress()
                   if (ext_101_enabled) // Allow the ext keys
                   {
                     sendXtCode(at_data_prev); // so send the E0
-                    delayMicroseconds(XT_NEXT_DELAY);
+                    delayMicroseconds(kbt.xt_next_delay);
                   }
                   else
                   {
@@ -358,7 +389,7 @@ void processKeyPress()
                 if(!ext_strip_pressed)
                 {
                   sendXtCode(0xE0); // so send the E0
-                  delayMicroseconds(XT_NEXT_DELAY);
+                  delayMicroseconds(kbt.xt_next_delay);
                 }
               }
               if (ext_nav_pressed)
@@ -367,7 +398,7 @@ void processKeyPress()
                 if (ext_101_enabled)
                 {
                   sendXtCode(0xE0); // so send the E0
-                  delayMicroseconds(XT_NEXT_DELAY);
+                  delayMicroseconds(kbt.xt_next_delay);
                 }
               }
               xt_data_byte = xt_data_byte + 0x80;
@@ -467,18 +498,19 @@ void sendAtCode(byte sac_code)
   pinMode(AT_DATA, OUTPUT);
   digitalWrite(AT_DATA, HIGH);
 
-#ifdef DEV_BOARD
-  digitalWrite(LED_AT_DATA, HIGH);
-#endif
+  if (kGetBoardType() == B_DEV)
+  {
+    digitalWrite(LED_AT_DATA, HIGH);
+  }
 
   // Send start bit.
   digitalWrite(AT_CLK, LOW);
-  delayMicroseconds(AT_BIT_DELAY);
+  delayMicroseconds(kbt.at_bit_delay);
   digitalWrite(AT_DATA, LOW);
-  delayMicroseconds(AT_BIT_DELAY);
+  delayMicroseconds(kbt.at_bit_delay);
   // Release the AT clock and data.
   pinMode(AT_CLK, INPUT_PULLUP);
-  delayMicroseconds(AT_BIT_DELAY);
+  delayMicroseconds(kbt.at_bit_delay);
 
   // Send data.
   for(int count = 0; count <8; count++)
@@ -493,9 +525,9 @@ void sendAtCode(byte sac_code)
     {
       digitalWrite(AT_DATA, LOW);
     }
-    delayMicroseconds(AT_BIT_DELAY);
+    delayMicroseconds(kbt.at_bit_delay);
     //while(!digitalRead(AT_CLK));
-    delayMicroseconds(AT_BIT_DELAY);
+    delayMicroseconds(kbt.at_bit_delay);
   }
 
   // Send parity bit.
@@ -510,14 +542,13 @@ void sendAtCode(byte sac_code)
   {
     digitalWrite(AT_DATA, LOW);
   }
-  delayMicroseconds(AT_BIT_DELAY);
-  delayMicroseconds(AT_BIT_DELAY);
+  delayMicroseconds(kbt.at_bit_delay);
+  delayMicroseconds(kbt.at_bit_delay);
 
-  //digitalWrite(AT_DATA, HIGH);
-
-#ifdef DEV_BOARD
-  digitalWrite(LED_AT_DATA, LOW);
-#endif
+  if (kGetBoardType() == B_DEV)
+  {
+    digitalWrite(LED_AT_DATA, LOW);
+  }
 
   // Release the AT clock and data.
   pinMode(AT_CLK, INPUT_PULLUP);
@@ -541,37 +572,39 @@ void sendXtCode(byte sxc_code)
   pinMode(XT_DATA, OUTPUT);
   digitalWrite(XT_CLK, HIGH);
 
-#ifdef DEV_BOARD
-  digitalWrite(LED_XT_CLK, HIGH);
-  digitalWrite(LED_XT_DATA, HIGH);
-#endif
+  if (kGetBoardType() == B_DEV)
+  {
+    digitalWrite(LED_XT_CLK, HIGH);
+    digitalWrite(LED_XT_DATA, HIGH);
+  }
 
   // Send start bit.
   digitalWrite(XT_DATA, HIGH);
-  delayMicroseconds(XT_START_DELAY);
+  delayMicroseconds(kbt.xt_start_delay);
   digitalWrite(XT_CLK, LOW);
-  delayMicroseconds(XT_BIT_DELAY);
+  delayMicroseconds(kbt.xt_bit_delay);
   digitalWrite(XT_CLK, HIGH);
-  delayMicroseconds(XT_BIT_DELAY);
+  delayMicroseconds(kbt.xt_bit_delay);
 
   // Send data.
   for(int count = 0; count <9; count++)
   {
     digitalWrite(XT_DATA, bitRead(sxc_code, count));
-    delayMicroseconds(XT_START_DELAY);
+    delayMicroseconds(kbt.xt_start_delay);
     digitalWrite(XT_CLK, LOW);
-    delayMicroseconds(XT_BIT_DELAY);
+    delayMicroseconds(kbt.xt_bit_delay);
     digitalWrite(XT_CLK, HIGH);
-    delayMicroseconds(XT_BIT_DELAY);
+    delayMicroseconds(kbt.xt_bit_delay);
   }
 
   digitalWrite(XT_DATA, HIGH);
-  delayMicroseconds(XT_BIT_DELAY);
+  delayMicroseconds(kbt.xt_bit_delay);
 
-#ifdef DEV_BOARD
-  digitalWrite(LED_XT_DATA, LOW);
-  digitalWrite(LED_XT_CLK, LOW);
-#endif
+  if (kGetBoardType() == B_DEV)
+  {
+    digitalWrite(LED_XT_DATA, LOW);
+    digitalWrite(LED_XT_CLK, LOW);
+  }
 
   // Release the XT clock and data.
   pinMode(XT_CLK, INPUT_PULLUP);
@@ -586,9 +619,9 @@ void sendXtCode(byte sxc_code)
 void updateKbLeds(void)
 {
   sendAtCode(0xED);
-  delay(AT_NEXT_DELAY);
+  delay(kbt.at_next_delay);
   sendAtCode(kb_leds);
-  delay(AT_NEXT_DELAY);
+  delay(kbt.at_next_delay);
 }
 
 /*************************************************************************
@@ -605,9 +638,10 @@ void INT1_ISR(void)
 
   if (at_clk_count == 1) // Start bit
   {
-#ifdef DEV_BOARD
-    digitalWrite(LED_AT_CLK, HIGH); // Turn on AT_CLK LED
-#endif
+    if (kGetBoardType() == B_DEV)
+    {
+      digitalWrite(LED_AT_CLK, HIGH); // Turn on AT_CLK LED
+    }
     at_data_byte = 0;
     at_data_temp = 0;
   }
@@ -630,47 +664,49 @@ void INT1_ISR(void)
     at_data_ready = true;
     at_clk_busy = false;
 
-#ifdef DEV_BOARD
-    digitalWrite(LED_AT_CLK, LOW); // Turn off AT_CLK LED
-#endif
+    if (kGetBoardType() == B_DEV)
+    {
+      digitalWrite(LED_AT_CLK, LOW); // Turn off AT_CLK LED
+    }
   }
 }
 
 //*************************************************************************
-#ifdef DEV_BOARD
 void checkDevOptions(void)
 {
-  if (analogRead(A0) < 128)
+  if (kGetBoardType() == B_DEV)
   {
-    digitalWrite(LED_AT_CLK, HIGH);
-  }
-  else
-  {
-    digitalWrite(LED_AT_CLK, LOW);
-  }
-  if (analogRead(A1) < 128)
-  {
-    digitalWrite(LED_AT_DATA, HIGH);
-  }
-  else
-  {
-    digitalWrite(LED_AT_DATA, LOW);
-  }
-  if (analogRead(A2) < 128)
-  {
-    digitalWrite(LED_XT_CLK, HIGH);
-  }
-  else
-  {
-    digitalWrite(LED_XT_CLK, LOW);
-  }
-  if (analogRead(A3) < 128)
-  {
-    digitalWrite(LED_XT_DATA, HIGH);
-  }
-  else
-  {
-    digitalWrite(LED_XT_DATA, LOW);
+    if (analogRead(A0) < 128)
+    {
+      digitalWrite(LED_AT_CLK, HIGH);
+    }
+    else
+    {
+      digitalWrite(LED_AT_CLK, LOW);
+    }
+    if (analogRead(A1) < 128)
+    {
+      digitalWrite(LED_AT_DATA, HIGH);
+    }
+    else
+    {
+      digitalWrite(LED_AT_DATA, LOW);
+    }
+    if (analogRead(A2) < 128)
+    {
+      digitalWrite(LED_XT_CLK, HIGH);
+    }
+    else
+    {
+      digitalWrite(LED_XT_CLK, LOW);
+    }
+    if (analogRead(A3) < 128)
+    {
+      digitalWrite(LED_XT_DATA, HIGH);
+    }
+    else
+    {
+      digitalWrite(LED_XT_DATA, LOW);
+    }
   }
 }
-#endif

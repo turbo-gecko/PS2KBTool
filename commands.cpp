@@ -3,9 +3,8 @@
  * 
  * Command line commands.
  * 
- * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
- * with all the software bugs herein. It is free to use for
- * non-commercial purposes.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH). It is free
+ * to use for non-commercial purposes.
  * 
  * WARNING: DO NOT USE this software in any medical device or for any 
  * other mission critical purpose.
@@ -33,6 +32,15 @@ void displayHelp()
   sHostPrintln("");
   S_HOST.println(F("PS2KB Tool Help"));
   S_HOST.println(F("The following commands are available:"));
+  S_HOST.println(F("--Keyboard--"));
+  S_HOST.println(F("kbt                   - set keyboard type"));
+  S_HOST.println(F("k101                  - set enhanced 101 keys"));
+  S_HOST.println(F("kabd                  - set AT bit delay"));
+  S_HOST.println(F("kand                  - set AT next byte delay"));
+  S_HOST.println(F("kasd                  - set AT start bit delay"));
+  S_HOST.println(F("kxbd                  - set XT bit delay"));
+  S_HOST.println(F("kxnd                  - set XT next byte delay"));
+  S_HOST.println(F("kxsd                  - set XT start bit delay"));
   S_HOST.println(F("--Serial--"));
   S_HOST.println(F("sbr <baud>            - set host baud rate"));
   S_HOST.println(F("scd <mSec>            - set inter character delay"));
@@ -43,7 +51,8 @@ void displayHelp()
   S_HOST.println(F("reset                 - reset device"));
   S_HOST.println(F("ccrc                  - calculate EEPROM CRC"));
   S_HOST.println(F("scrc                  - display saved EEPROM CRC"));
-  S_HOST.println(F("er <address>          - read value from EEPROM - address"));
+  S_HOST.println(F("ep                    - print all EEPROM values"));
+  S_HOST.println(F("er <address>          - read value from EEPROM address"));
   S_HOST.println(F("ew <address> <value>  - write value to EEPROM address"));
 }
 
@@ -76,16 +85,44 @@ bool processCommand(const String cmdLine)
   }
   else if (command.equals("?"))
   {
-    S_HOST.println(F("Keyboard: k101"));
+    S_HOST.println(F("Keyboard: kbt,k101,kabd,kand,kasd,kxbd,kxnd,kxsd"));
     S_HOST.println(F("Serial  : sbr,scd,sld,sfc,sen"));
-    S_HOST.println(F("Debug   : reset,ccrc,scrc,er,ew"));
+    S_HOST.println(F("Debug   : reset,ccrc,scrc,ep,er,ew"));
     S_HOST.println(F("type 'help' for more detailed help"));
     return true;
   }
   // ************************* Keyboard Commands *********************************
+  else if (command.equals("kbt"))
+  {
+    return cKbBoardType(param);
+  }
   else if (command.equals("k101"))
   {
     return cKb101(param);
+  }
+  else if (command.equals("kabd"))
+  {
+    return cKbTimings(param, 1);
+  }
+  else if (command.equals("kand"))
+  {
+    return cKbTimings(param, 2);
+  }
+  else if (command.equals("kasd"))
+  {
+    return cKbTimings(param, 3);
+  }
+  else if (command.equals("kxbd"))
+  {
+    return cKbTimings(param, 4);
+  }
+  else if (command.equals("kxnd"))
+  {
+    return cKbTimings(param, 5);
+  }
+  else if (command.equals("kxsd"))
+  {
+    return cKbTimings(param, 6);
   }
   // ************************* Serial Commands *********************************
   else if (command.equals("sbr"))
@@ -122,6 +159,19 @@ bool processCommand(const String cmdLine)
     sHostPrintln("Saved CRC = " + String(crc_saved, HEX));
     return true;
   }
+  else if (command.equals("ep"))
+  {
+    for (int i = 0; i < E_END_ADDRESS; i++)
+    {
+      if (EEPROM.read(i) < 16)
+      {
+        sHostPrint("0");
+      }
+      sHostPrint(String(EEPROM.read(i), HEX) + " ");
+    }
+    sHostPrintln("");
+    return true;
+  }
   else if (command.equals("er"))
   {
     return cEepromRead(param);
@@ -154,6 +204,29 @@ void sHostPrompt()
  * Commands.
  *************************************************************************/
 //*************************************************************************
+//*************************************************************************
+bool cKbBoardType(const String param)
+{
+  if (param.length() > 0)
+  {
+    if ((param.toInt() < 1) | (param.toInt() >= B_LAST))
+    {
+      S_HOST.println(F("Invalid board type"));
+      return false;
+    }
+    else
+    {
+      kBoardType(param.toInt());
+      return true;
+    }
+  }
+  else
+  {
+    sHostPrintln("Board type = " + String(kGetBoardType(), DEC));
+    return true;
+  }
+}
+
 bool cKb101(const String param)
 {
   if (param.length() > 0)
@@ -189,6 +262,42 @@ bool cKb101(const String param)
     return true;
   }
   return false; // We should never get here.
+}
+
+bool cKbTimings(const String param, byte item)
+{
+  if (param.length() > 0)
+  {
+    kDelayTimings(param.toInt(), item);
+  }
+  else
+  {
+    switch(item)
+    {
+      case 1:
+        sHostPrintln("AT Bit Delay = " + String(kGetDelayTimings(item), DEC));
+        break;
+      case 2:
+        sHostPrintln("AT Next Byte Delay = " + String(kGetDelayTimings(item), DEC));
+        break;
+      case 3:
+        sHostPrintln("AT Start Bit Delay = " + String(kGetDelayTimings(item), DEC));
+        break;
+      case 4:
+        sHostPrintln("XT Bit Delay = " + String(kGetDelayTimings(item), DEC));
+        break;
+      case 5:
+        sHostPrintln("XT Next Byte Delay = " + String(kGetDelayTimings(item), DEC));
+        break;
+      case 6:
+        sHostPrintln("XT Start Bit Delay = " + String(kGetDelayTimings(item), DEC));
+        break;
+      default:
+        return false; // We should never get here.
+        break;
+    }
+  }
+  return true;
 }
 
 //*************************************************************************

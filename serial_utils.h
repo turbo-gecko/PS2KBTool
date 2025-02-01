@@ -6,9 +6,8 @@
  * 
  * Serial helper functions.
  * 
- * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
- * with all the software bugs herein. It is free to use for
- * non-commercial purposes.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH). It is free
+ * to use for non-commercial purposes.
  * 
  * WARNING: DO NOT USE this software in any medical device or for any 
  * other mission critical purpose.

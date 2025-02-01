@@ -3,9 +3,8 @@
  * 
  * EEPROM helper functions.
  * 
- * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
- * with all the software bugs herein. It is free to use for
- * non-commercial purposes.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH). It is free
+ * to use for non-commercial purposes.
  * 
  * WARNING: DO NOT USE this software in any medical device or for any 
  * other mission critical purpose.
@@ -94,7 +93,14 @@ void eResetDefaultValues()
   EEPROM.put(E_LINE_DELAY, (unsigned int) S_DEF_LINE_DELAY);
   EEPROM.put(E_XON_XOFF, (byte) S_DEF_XON_XOFF);
   EEPROM.put(E_SERIAL_ENABLED, (byte) S_DEF_SERIAL_ENABLED);
-  EEPROM.put(E_EXT_KEYS_ENABLED, (byte) S_DEF_EXT_KEYS_ENABLED);
+  EEPROM.put(E_EXT_KEYS_ENABLED, (byte) K_DEF_EXT_KEYS_ENABLED);
+  EEPROM.put(E_BOARD_TYPE, (unsigned int) K_DEF_BOARD_TYPE);
+  EEPROM.put(E_AT_BIT_DELAY, (byte) K_DEF_AT_BIT_DELAY);
+  EEPROM.put(E_AT_NEXT_DELAY, (byte) K_DEF_AT_NEXT_DELAY);
+  EEPROM.put(E_AT_START_DELAY, (byte) K_DEF_AT_START_DELAY);
+  EEPROM.put(E_XT_BIT_DELAY, (byte) K_DEF_XT_BIT_DELAY);
+  EEPROM.put(E_XT_NEXT_DELAY, (byte) K_DEF_XT_NEXT_DELAY);
+  EEPROM.put(E_XT_START_DELAY, (byte) K_DEF_XT_START_DELAY);
   eUpdateCrc();
 
   ePrintValues();

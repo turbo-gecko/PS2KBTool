@@ -3,9 +3,8 @@
  * 
  * Keyboard scan code helper functions.
  * 
- * This software is copyright 2024-2025 by Gary Hammond (ZL3GH) along
- * with all the software bugs herein. It is free to use for
- * non-commercial purposes.
+ * This software is copyright 2024-2025 by Gary Hammond (ZL3GH). It is free
+ * to use for non-commercial purposes.
  * 
  * WARNING: DO NOT USE this software in any medical device or for any 
  * other mission critical purpose.
@@ -22,7 +21,8 @@
 
 #include "eeprom_utils.h"
 
-bool ext_keys_enabled = false;
+static bool ext_keys_enabled     = false;
+static unsigned int board_type   = 1;
 
 static unsigned int i;
 
@@ -226,6 +226,88 @@ byte AT2XTExtStrip(byte scan_code)
     }
   }
   return 0;
+}
+
+//*************************************************************************
+void kBoardType(const unsigned int value)
+{
+  EEPROM.get(E_BOARD_TYPE, board_type);
+  if (board_type != value)
+  {
+    if ((value > 0) & (value < B_LAST))
+    {
+      board_type = value;
+      EEPROM.put(E_BOARD_TYPE, value);
+      eUpdateCrc();
+    }
+  }
+}
+
+//*************************************************************************
+unsigned int kGetBoardType()
+{
+  EEPROM.get(E_BOARD_TYPE, board_type);
+  return board_type;
+}
+
+//*************************************************************************
+void kDelayTimings(byte value, byte item)
+{
+  switch(item)
+  {
+    case 1:
+      EEPROM.put(E_AT_BIT_DELAY, value);
+      break;
+    case 2:
+      EEPROM.put(E_AT_NEXT_DELAY, value);
+      break;
+    case 3:
+      EEPROM.put(E_AT_START_DELAY, value);
+      break;
+    case 4:
+      EEPROM.put(E_XT_BIT_DELAY, value);
+      break;
+    case 5:
+      EEPROM.put(E_XT_NEXT_DELAY, value);
+      break;
+    case 6:
+      EEPROM.put(E_XT_START_DELAY, value);
+      break;
+    default:
+      break;
+  }
+  eUpdateCrc();
+}
+
+//*************************************************************************
+byte kGetDelayTimings(byte item)
+{
+  byte value = 0;
+
+  switch(item)
+  {
+    case 1:
+      EEPROM.get(E_AT_BIT_DELAY, value);
+      break;
+    case 2:
+      EEPROM.get(E_AT_NEXT_DELAY, value);
+      break;
+    case 3:
+      EEPROM.get(E_AT_START_DELAY, value);
+      break;
+    case 4:
+      EEPROM.get(E_XT_BIT_DELAY, value);
+      break;
+    case 5:
+      EEPROM.get(E_XT_NEXT_DELAY, value);
+      break;
+    case 6:
+      EEPROM.get(E_XT_START_DELAY, value);
+      break;
+    default:
+      break;
+  }
+  return value;
 }
 
 //*************************************************************************
