@@ -41,6 +41,7 @@ bool ext_strip_pressed  = false;
 bool isr_disabled       = false;
 bool key_release        = false;
 bool serial_enabled     = false;
+bool sysreq_key_pressed = false;
 
 bool caps_lock          = false;
 bool num_lock           = false;
@@ -369,6 +370,11 @@ void processKeyPress()
         {
           LOG ('/');
           // Is the previous scan code the ext code?
+          if (at_data_byte == 0xE1)
+          {
+            break_key_pressed = true;
+          }
+
           if (at_data_prev == 0xE0)
           {
             // Not the E0 12 ext sequence
@@ -418,12 +424,14 @@ void processKeyPress()
             }
             else
             {
+              // PrintScreen/SysReq pressed
+              sysreq_key_pressed = true;
+
               // Eat this key press as it is not a valid XT key
               xt_data_byte = 0;
             }
 
-            // Check for (PrintScreen/SysReq)
-            if (at_data_byte == 0x7C)
+            if (at_data_byte == 0x7C && sysreq_key_pressed)
             {
               // Eat this key press as it is not a valid XT key
               xt_data_byte = 0;
@@ -439,26 +447,16 @@ void processKeyPress()
           }
           else
           {
-            if (at_data_prev == 0xE1)
+            if (break_key_pressed)
             {
-              // Break key sequence
               xt_data_byte = 0;
-              // Set break key flag
-              break_key_pressed = true;
             }
             else
             {
-              if (break_key_pressed)
+              xt_data_byte = AT2XT(at_data_byte);
+              if(xt_data_byte == 0)
               {
-                xt_data_byte = 0;
-              }
-              else
-              {
-                xt_data_byte = AT2XT(at_data_byte);
-                if(xt_data_byte == 0)
-                {
-                  xt_data_byte = AT2XTExt(at_data_byte);
-                }
+                xt_data_byte = AT2XTExt(at_data_byte);
               }
             }
 
@@ -483,7 +481,7 @@ void processKeyPress()
               {
                 // Reset the flag
                 ext_nav_pressed = false;
-                // Are we allowed to send teh extended key press?
+                // Are we allowed to send the extended key press?
                 if (ext_101_enabled)
                 {
                   // Send the E0
@@ -491,8 +489,22 @@ void processKeyPress()
                   delayMicroseconds(kbt.xt_next_delay);
                 }
               }
-              // Set up for key release XT scan code
-              xt_data_byte = xt_data_byte + 0x80;
+
+              // Check for (PrintScreen/SysReq)
+              if (sysreq_key_pressed)
+              {
+                if (at_data_byte == 0x12)
+                {
+                  sysreq_key_pressed = false;
+                }
+                // Eat this key press
+                xt_data_byte = 0;
+              }
+              else
+              {
+                // Set up for key release XT scan code
+                xt_data_byte = xt_data_byte + 0x80;
+              }
             }
 
             LOG_HEX (xt_data_byte);
