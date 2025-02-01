@@ -152,6 +152,7 @@ static const struct key_code key_table_ext_nav[] =
   {86, 0x51, 0x7A},   // Page Down
   {89, 0x4D, 0x74},   // Right Arrow
   {95, 0x35, 0x4A},   // Numpad /
+  {100, 0x37, 0x7C},  // Numpad * and Print Screen
   {108, 0x1C, 0x5A},  // Numpad Enter
   {0, 0x00, 0x00}
 };
