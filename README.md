@@ -126,3 +126,16 @@ In the example above:
 - Work with someone on seeing if changes are needed for foreign language keyboards.
 - Add a macro feature for the AT scan codes that the XT doesn't recognise.
 
+# Keyboard Interface Resources
+http://www.cs.cmu.edu/afs/cs/usr/jmcm/www/info/key2.txt
+
+http://www.hardwarebook.info/AT_Keyboard/Mouse_protocol
+
+http://www.electronic-engineering.ch/microchip/datasheets/kbd_spec.pdf
+
+https://www.tayloredge.com/reference/Interface/atkeyboard.pdf
+
+http://brokenthorn.com/Resources/OSDevScanCodes.html
+
+https://kbd-project.org/docs/scancodes/scancodes-1.html
+
