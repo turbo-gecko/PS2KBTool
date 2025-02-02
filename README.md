@@ -113,8 +113,16 @@ In the example above:
 - The first 58 sequence pressing/releasing the caps lock key with the trailing [A:ed][A:4] being the command to the keyboard to turn on the caps lock LED.
 - The second 58 sequence pressing/releasing the caps lock key with the trailing [A:ed][A:0] being the command to the keyboard to turn off the caps lock LED.
 
+## Known issues
+- The SysReq and Break key scan codes have been disabled and will not be passed through to the computer.
+
 ## To Do
-- Write up a LOT more documentation on how the EEPROM code works and what needs to be changed when adding new values.
+- Write up a LOT more documentation.
+  - How the EEPROM code works and what needs to be changed when adding new values.
+  - How the translation tables work.
+  - How the code main logic works, although the code does have some level of commenting.
 - Finish version 2 of the developer edition and mini boards.
  - Upload the KiCad files when done.
+- Work with someone on seeing if changes are needed for foreign language keyboards.
+- Add a macro feature for the AT scan codes that the XT doesn't recognise.
 
