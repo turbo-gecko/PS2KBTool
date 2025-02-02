@@ -182,7 +182,7 @@ void setup()
     serial_enabled = true;
 
     S_HOST.begin(sHostGetBaudRate());
-    sHostPrintln("Programming mode...");
+    sHostPrintln(T_PROG_MODE);
   }
   else
   {

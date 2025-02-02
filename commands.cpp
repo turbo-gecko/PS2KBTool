@@ -32,29 +32,29 @@ void displayHelp()
   S_HOST.println("");
   S_HOST.print(F("PS2KB Tool - v"));
   S_HOST.println(VERSION);
-  S_HOST.println(F("The following commands are available:"));
-  S_HOST.println(F("--Keyboard--"));
-  S_HOST.println(F("kbt <1|2|3>           - set converter board type"));
-  S_HOST.println(F("k101 <on|off>         - set enhanced 101 keys"));
-  S_HOST.println(F("kabd <uSec>           - set AT bit delay"));
-  S_HOST.println(F("kand <uSec>           - set AT next byte delay"));
-  S_HOST.println(F("kasd <uSec>           - set AT start bit delay"));
-  S_HOST.println(F("kxbd <uSec>           - set XT bit delay"));
-  S_HOST.println(F("kxnd <uSec>           - set XT next byte delay"));
-  S_HOST.println(F("kxsd <uSec>           - set XT start bit delay"));
-  S_HOST.println(F("--Serial--"));
-  S_HOST.println(F("sbr <baud>            - set host baud rate"));
-  S_HOST.println(F("scd <mSec>            - set inter character delay"));
-  S_HOST.println(F("sld <mSec>            - set inter line delay"));
-  S_HOST.println(F("sfc <on|off>          - set XON/XOFF flow control"));
-  S_HOST.println(F("sen <on|off>          - turn ON/OFF output to the serial port"));
-  S_HOST.println(F("--Debug--"));
-  S_HOST.println(F("reset                 - reset device"));
-  S_HOST.println(F("ccrc                  - calculate EEPROM CRC"));
-  S_HOST.println(F("scrc                  - display saved EEPROM CRC"));
-  S_HOST.println(F("ep                    - print all EEPROM values"));
-  S_HOST.println(F("er <address>          - read value from EEPROM address"));
-  S_HOST.println(F("ew <address> <value>  - write value to EEPROM address"));
+  S_HOST.println(F(T_HELP_01));
+  S_HOST.println(F(T_HELP_02));
+  S_HOST.println(F(T_HELP_03));
+  S_HOST.println(F(T_HELP_04));
+  S_HOST.println(F(T_HELP_05));
+  S_HOST.println(F(T_HELP_06));
+  S_HOST.println(F(T_HELP_07));
+  S_HOST.println(F(T_HELP_08));
+  S_HOST.println(F(T_HELP_09));
+  S_HOST.println(F(T_HELP_10));
+  S_HOST.println(F(T_HELP_11));
+  S_HOST.println(F(T_HELP_12));
+  S_HOST.println(F(T_HELP_13));
+  S_HOST.println(F(T_HELP_14));
+  S_HOST.println(F(T_HELP_15));
+  S_HOST.println(F(T_HELP_16));
+  S_HOST.println(F(T_HELP_17));
+  S_HOST.println(F(T_HELP_18));
+  S_HOST.println(F(T_HELP_19));
+  S_HOST.println(F(T_HELP_20));
+  S_HOST.println(F(T_HELP_21));
+  S_HOST.println(F(T_HELP_22));
+  S_HOST.println(F(T_HELP_23));
 }
 
 /*************************************************************************
@@ -79,17 +79,17 @@ bool processCommand(const String cmdLine)
     command = cmdLine;
   }
   
-  if (command.equals("help"))
+  if (command.equals(T_HELP))
   {
     displayHelp();
     return true;
   }
   else if (command.equals("?"))
   {
-    S_HOST.println(F("Keyboard: kbt,k101,kabd,kand,kasd,kxbd,kxnd,kxsd"));
-    S_HOST.println(F("Serial  : sbr,scd,sld,sfc,sen"));
-    S_HOST.println(F("Debug   : reset,ccrc,scrc,ep,er,ew"));
-    S_HOST.println(F("type 'help' for more detailed help"));
+    S_HOST.println(F(T_HELP_40));
+    S_HOST.println(F(T_HELP_41));
+    S_HOST.println(F(T_HELP_42));
+    S_HOST.println(F(T_HELP_43));
     return true;
   }
   // ************************* Keyboard Commands *********************************
@@ -150,14 +150,14 @@ bool processCommand(const String cmdLine)
   else if (command.equals("ccrc"))
   {
     unsigned long crc_calc = eCrc();
-    S_HOST.println("Calculated CRC = " + String(crc_calc, HEX));
+    S_HOST.println(T_MSG_01 + String(crc_calc, HEX));
     return true;
   }
   else if (command.equals("scrc"))
   {
     unsigned long crc_saved = 0;
     EEPROM.get(E_CHECKSUM, crc_saved);
-    S_HOST.println("Saved CRC = " + String(crc_saved, HEX));
+    S_HOST.println(T_MSG_02 + String(crc_saved, HEX));
     return true;
   }
   else if (command.equals("ep"))
@@ -188,8 +188,8 @@ bool processCommand(const String cmdLine)
   }
 
   S_HOST.println("");
-  S_HOST.println("command '" + command + "' not found");
-  S_HOST.println(F("Type 'help' for a list of commands"));
+  S_HOST.println(T_MSG_03);
+  S_HOST.println(F(T_MSG_04));
   return false;
 }
 
@@ -212,7 +212,7 @@ bool cKbBoardType(const String param)
   {
     if ((param.toInt() < 1) | (param.toInt() >= B_LAST))
     {
-      S_HOST.println(F("Invalid board type"));
+      S_HOST.println(F(T_MSG_05));
       return false;
     }
     else
@@ -223,7 +223,7 @@ bool cKbBoardType(const String param)
   }
   else
   {
-    S_HOST.println("Board type = " + String(kGetBoardType(), DEC));
+    S_HOST.println(T_MSG_06 + String(kGetBoardType(), DEC));
     return true;
   }
 }
@@ -232,20 +232,20 @@ bool cKb101(const String param)
 {
   if (param.length() > 0)
   {
-    if (param.equals("on"))
+    if (param.equals(T_ON))
     {
       k101Enabled(true);
     }
     else
     {
-      if (param.equals("off"))
+      if (param.equals(T_OFF))
       {
         k101Enabled(false);
       }
       else
       {
-        S_HOST.println(param + " is invalid");
-        S_HOST.println(F("Please Use either 'on' or 'off'"));
+        S_HOST.println(param + T_IS_INVALID);
+        S_HOST.println(F(T_ON_OR_OFF));
         return false;
       }
     }
@@ -254,11 +254,11 @@ bool cKb101(const String param)
   {
     if (kGet101Enabled())
     {
-      S_HOST.println(F("101 keys is enabled"));
+      S_HOST.println(F(T_MSG_08));
     }
     else
     {
-      S_HOST.println(F("101 keys is disabled"));
+      S_HOST.println(F(T_MSG_09));
     }
     return true;
   }
@@ -276,22 +276,22 @@ bool cKbTimings(const String param, byte item)
     switch(item)
     {
       case 1:
-        S_HOST.println("AT Bit Delay = " + String(kGetDelayTimings(item), DEC));
+        S_HOST.println(T_MSG_10 + String(kGetDelayTimings(item), DEC));
         break;
       case 2:
-        S_HOST.println("AT Next Byte Delay = " + String(kGetDelayTimings(item), DEC));
+        S_HOST.println(T_MSG_11 + String(kGetDelayTimings(item), DEC));
         break;
       case 3:
-        S_HOST.println("AT Start Bit Delay = " + String(kGetDelayTimings(item), DEC));
+        S_HOST.println(T_MSG_12 + String(kGetDelayTimings(item), DEC));
         break;
       case 4:
-        S_HOST.println("XT Bit Delay = " + String(kGetDelayTimings(item), DEC));
+        S_HOST.println(T_MSG_13 + String(kGetDelayTimings(item), DEC));
         break;
       case 5:
-        S_HOST.println("XT Next Byte Delay = " + String(kGetDelayTimings(item), DEC));
+        S_HOST.println(T_MSG_14 + String(kGetDelayTimings(item), DEC));
         break;
       case 6:
-        S_HOST.println("XT Start Bit Delay = " + String(kGetDelayTimings(item), DEC));
+        S_HOST.println(T_MSG_15 + String(kGetDelayTimings(item), DEC));
         break;
       default:
         return false; // We should never get here.
@@ -314,13 +314,13 @@ bool cSerialBaudRate(const String param)
     }
     else
     {
-      S_HOST.println(F("Host baud rate not valid"));
+      S_HOST.println(F(T_MSG_16));
       return false;
     }
   }
   else
   {
-    S_HOST.println("Baud rate = " + String(sHostGetBaudRate(), DEC) + " bps");
+    S_HOST.println(T_MSG_17 + String(sHostGetBaudRate(), DEC) + " bps");
     return true;
   }
 }
@@ -332,7 +332,7 @@ bool cSerialCharDelay(const String param)
   {
     if (param.toInt() < 0)
     {
-      S_HOST.println(F("Inter character delay too small"));
+      S_HOST.println(F(T_MSG_18));
       return false;
     }
     else
@@ -343,7 +343,7 @@ bool cSerialCharDelay(const String param)
   }
   else
   {
-    S_HOST.println("Character delay = " + String(sHostGetCharDelay(), DEC) + " mSec");
+    S_HOST.println(T_MSG_19 + String(sHostGetCharDelay(), DEC) + " mSec");
     return true;
   }
 }
@@ -355,7 +355,7 @@ bool cSerialLineDelay(const String param)
   {
     if (param.toInt() < 0)
     {
-      S_HOST.println(F("Inter line delay too small"));
+      S_HOST.println(F(T_MSG_20));
       return false;
     }
     else
@@ -366,7 +366,7 @@ bool cSerialLineDelay(const String param)
   }
   else
   {
-    S_HOST.println("Line delay = " + String(sHostGetLineDelay(), DEC) + " mSec");
+    S_HOST.println(T_MSG_21 + String(sHostGetLineDelay(), DEC) + " mSec");
     return true;
   }
 }
@@ -376,20 +376,20 @@ bool cSerialFlowControl(const String param)
 {
   if (param.length() > 0)
   {
-    if (param.equals("on"))
+    if (param.equals(T_ON))
     {
       sHostXonXoff(true);
     }
     else
     {
-      if (param.equals("off"))
+      if (param.equals(T_OFF))
       {
         sHostXonXoff(false);
       }
       else
       {
-        S_HOST.println(param + " is invalid");
-        S_HOST.println(F("Please Use either 'on' or 'off'"));
+        S_HOST.println(param + T_IS_INVALID);
+        S_HOST.println(F(T_ON_OR_OFF));
         return false;
       }
     }
@@ -398,11 +398,11 @@ bool cSerialFlowControl(const String param)
   {
     if (sHostGetXonXoff())
     {
-      S_HOST.println(F("Xon/Xoff flow control is enabled"));
+      S_HOST.println(F(T_MSG_22));
     }
     else
     {
-      S_HOST.println(F("Xon/Xoff flow control is disabled"));
+      S_HOST.println(F(T_MSG_23));
     }
     return true;
   }
@@ -414,20 +414,20 @@ bool cSerialEnabled(const String param)
 {
   if (param.length() > 0)
   {
-    if (param.equals("on"))
+    if (param.equals(T_ON))
     {
       sHostEnabled(true);
     }
     else
     {
-      if (param.equals("off"))
+      if (param.equals(T_OFF))
       {
         sHostEnabled(false);
       }
       else
       {
-        S_HOST.println(param + " is invalid");
-        S_HOST.println(F("Please Use either 'on' or 'off'"));
+        S_HOST.println(param + T_IS_INVALID);
+        S_HOST.println(F(T_ON_OR_OFF));
         return false;
       }
     }
@@ -436,11 +436,11 @@ bool cSerialEnabled(const String param)
   {
     if (sHostGetEnabled())
     {
-      S_HOST.println(F("Serial output is enabled"));
+      S_HOST.println(F(T_MSG_24));
     }
     else
     {
-      S_HOST.println(F("Serial output is disabled"));
+      S_HOST.println(F(T_MSG_25));
     }
     return true;
   }
@@ -452,12 +452,12 @@ bool cEepromRead(const String param)
 {
   if (param.length() > 0)
   {
-    S_HOST.println("EEPROM Address " + param + " = " + String(EEPROM.read(param.toInt()), HEX));
+    S_HOST.println(T_MSG_26 + param + " = " + String(EEPROM.read(param.toInt()), HEX));
     return true;
   }
   else
   {
-    S_HOST.println(F("EEPROM address not specified"));
+    S_HOST.println(F(T_MSG_27));
     return false;
   }
 }
@@ -472,19 +472,19 @@ bool cEepromWrite(const String param)
     {
       String address = param.substring(0, index);
       String value = param.substring(index + 1, param.length());
-      S_HOST.println("Writing to EEPROM Address " + address + " = " + value);
+      S_HOST.println(T_MSG_28 + address + " = " + value);
       EEPROM.write(address.toInt(), value.toInt());
       return true;
     }
     else
     {
-      S_HOST.println(F("EEPROM value not specified"));
+      S_HOST.println(F(T_MSG_29));
       return false;
     }
   }
   else
   {
-    S_HOST.println(F("EEPROM address not specified"));
+    S_HOST.println(F(T_MSG_27));
     return false;
   }
 }
