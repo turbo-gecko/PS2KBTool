@@ -100,7 +100,7 @@ void setup()
   pinMode(AT_DATA, INPUT_PULLUP);
   pinMode(XT_CLK, INPUT_PULLUP);
   pinMode(XT_DATA, INPUT_PULLUP);
-  pinMode(CONFIG_1, INPUT);
+  pinMode(CONFIG_1, INPUT_PULLUP);
 
   // Initialise unused digital pins
   pinMode(D2, INPUT_PULLUP);
