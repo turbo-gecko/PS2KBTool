@@ -47,7 +47,7 @@ To check how well the keyboard is working, I have written a keyboard diagnostics
 Open a serial terminal and set the baud rate to 115,200 with no flow control.
 To enable programming mode via the Nano's USB port:
 - On the mini or dev board, turn on DIP switch 1.
-- On the bread board version, hold the prog button until you see 'Programming mode...' in the serial terminal.
+- On the bread board version, press and hold the prog button whilst also resetting the Nano, until you see 'Programming mode...' in the serial terminal. This may take up to 5 seconds.
 
 When the 'Programming mode prompt appears, type 'help' and press enter for a list of available commands.
 ```
