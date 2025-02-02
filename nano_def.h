@@ -45,12 +45,13 @@
 #define XT_DATA       D10
 
 #define CONFIG_1      D12
-#define CONFIG_2      D13
+#define DEV           D2
 
+#define LED_NANO      D13
 #define LED_AT_CLK    D8
 #define LED_AT_DATA   D7
 #define LED_XT_CLK    D6
 #define LED_XT_DATA   D5
-#define LED_PROG      D4
+#define LED_DEV       D4
 
 #endif // _NANO_DEF_H_

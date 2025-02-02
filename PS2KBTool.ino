@@ -66,6 +66,7 @@ byte kb_leds_prev       = 0;
 unsigned int at_timeout = 0;
 unsigned int board_type = 0;
 unsigned int count      = 0;
+unsigned int temp       = 0;
 
 struct kb_timings
 {
@@ -80,8 +81,8 @@ struct kb_timings
 /*************************************************************************
  * Macro's
  *************************************************************************/
-#define LOG(x) if (serial_enabled){S_HOST.print((x));}
-#define LOG_HEX(x) if (serial_enabled){S_HOST.print((x), HEX);}
+#define LOG(x) if (serial_enabled){sHostPrint((x));}
+#define LOG_HEX(x) if (serial_enabled){sHostPrint(String((x), HEX));}
 
 /*************************************************************************
  * Setup
@@ -99,13 +100,15 @@ void setup()
   pinMode(AT_DATA, INPUT_PULLUP);
   pinMode(XT_CLK, INPUT_PULLUP);
   pinMode(XT_DATA, INPUT_PULLUP);
-  pinMode(CONFIG_1, INPUT_PULLUP);
-  pinMode(CONFIG_2, INPUT_PULLUP);
+  pinMode(CONFIG_1, INPUT);
 
   // Initialise unused digital pins
   pinMode(D2, INPUT_PULLUP);
   pinMode(D14, INPUT_PULLUP);
   pinMode(D15, INPUT_PULLUP);
+
+  // Initialise output pins
+  pinMode(LED_NANO, OUTPUT);
 
   // Get the board type from EEPROM
   board_type = kGetBoardType();
@@ -119,14 +122,14 @@ void setup()
       pinMode(LED_AT_DATA, OUTPUT);
       pinMode(LED_XT_CLK, OUTPUT);
       pinMode(LED_XT_DATA, OUTPUT);
-      pinMode(LED_PROG, OUTPUT);
+      pinMode(LED_DEV, OUTPUT);
 
       // Flash the LED's
       digitalWrite(LED_AT_CLK, HIGH);
       digitalWrite(LED_AT_DATA, HIGH);
       digitalWrite(LED_XT_CLK, HIGH);
       digitalWrite(LED_XT_DATA, HIGH);
-      digitalWrite(LED_PROG, HIGH);
+      digitalWrite(LED_DEV, HIGH);
 
       delay (500);
 
@@ -134,7 +137,7 @@ void setup()
       digitalWrite(LED_AT_DATA, LOW);
       digitalWrite(LED_XT_CLK, LOW);
       digitalWrite(LED_XT_DATA, LOW);
-      digitalWrite(LED_PROG, LOW);
+      digitalWrite(LED_DEV, LOW);
       break;
 
     case B_STD:
@@ -143,7 +146,7 @@ void setup()
       pinMode(LED_AT_DATA, INPUT_PULLUP);
       pinMode(LED_XT_CLK, INPUT_PULLUP);
       pinMode(LED_XT_DATA, INPUT_PULLUP);
-      pinMode(LED_PROG, INPUT_PULLUP);
+      pinMode(LED_DEV, INPUT_PULLUP);
       break;
 
     case B_NUXT:
@@ -152,7 +155,7 @@ void setup()
       pinMode(LED_AT_DATA, INPUT_PULLUP);
       pinMode(LED_XT_CLK, INPUT_PULLUP);
       pinMode(LED_XT_DATA, INPUT_PULLUP);
-      pinMode(LED_PROG, INPUT_PULLUP);
+      pinMode(LED_DEV, INPUT_PULLUP);
       break;
 
     default:
@@ -168,27 +171,32 @@ void setup()
   kbt.xt_start_delay = kGetDelayTimings(6);
 
   // Read config DIP switch 1
-  int temp1 = digitalRead(CONFIG_1);
-  if (temp1 == LOW) // Program mode selected
+  temp = digitalRead(CONFIG_1);
+  if (temp == LOW) // Program mode selected
   {
     program_mode = true;
 
-    if(board_type == B_DEV)
-    {
-      digitalWrite(LED_PROG, HIGH);
-    }
+    digitalWrite(LED_NANO, HIGH);
 
     // Enable serial mode in case it has been disabled in the EEPROM
     serial_enabled = true;
+
     S_HOST.begin(sHostGetBaudRate());
-    S_HOST.println("Programming mode...");
+    sHostPrintln("Programming mode...");
   }
   else
   {
     program_mode = false;
 
-    // Get from EEPROM whether to enable serial debugging
+    digitalWrite(LED_NANO, LOW);
+
     serial_enabled = sHostGetEnabled();
+
+    if(board_type == B_DEV)
+    {
+      checkDevOptions();
+    }
+
     if (serial_enabled)
     {
       // Initialise host serial port
@@ -254,9 +262,120 @@ void loop()
 }
 
 /*************************************************************************
+ * Sample function for use with the dev board
+ *************************************************************************/
+void checkDevOptions(void)
+{
+  if(board_type == B_DEV)
+  {
+    if (analogRead(A0) < 128)
+    {
+      devOptions1();
+    }
+    
+    if (analogRead(A1) < 128)
+    {
+      devOptions2();
+    }
+    
+    if (analogRead(A2) < 128)
+    {
+      devOptions3();
+    }
+    
+    if (analogRead(A3) < 128)
+    {
+      devOptions4();
+    }
+  }
+}
+
+/*************************************************************************
+ * Check for scan codes that are not key presses i.e., BAT, Acks etc.
+ *************************************************************************/
+bool checkSpecialCase(void)
+{
+  static bool ret_val = false;
+  // Process data byte
+  // Handle special cases that will not be passed through first
+  switch(at_data_byte)
+  {
+    case 0xAA:
+      // BAT from KB
+      LOG ("\n");
+      LOG_HEX(at_data_byte);
+      LOG (" <BAT>\n\n");
+      ret_val = true;
+      break;
+
+    case 0xF0:
+      // Key release
+      if (ext_101_enabled)
+      {
+        if (at_data_prev == 0xE0)
+        {
+          sendXtCode(at_data_prev);
+          delayMicroseconds(kbt.xt_next_delay);
+        }
+      }
+      LOG_HEX (at_data_byte);
+      LOG ("\t");
+      key_release = true;
+      ret_val = true;
+      break;
+
+    case 0xFA:
+      // Ack from KB
+      LOG ("\n");
+      LOG_HEX(at_data_byte);
+      LOG (" <ACK>\n\n");
+      ret_val = true;
+      break;
+
+    default:
+      ret_val = false;
+      break;
+  }
+  return ret_val;
+}
+
+/*************************************************************************
+ * Sample function for use with the dev board
+ *************************************************************************/
+void devOptions1(void)
+{
+  return;
+}
+
+/*************************************************************************
+ * Sample function for use with the dev board
+ *************************************************************************/
+void devOptions2(void)
+{
+  return;
+}
+
+/*************************************************************************
+ * Sample function for use with the dev board
+ *************************************************************************/
+void devOptions3(void)
+{
+  return;
+}
+
+/*************************************************************************
+ * Sample function for use with the dev board
+ *************************************************************************/
+void devOptions4(void)
+{
+  serial_enabled = true;
+  return;
+}
+
+/*************************************************************************
  * Process the program mode commands
  *************************************************************************/
-void processCommands()
+void processCommands(void)
 {
   // Sample function call checking the additinal DIP switches on the DEV board
   if(board_type == B_DEV)
@@ -292,7 +411,6 @@ void processCommands()
         }
         else
         {
-          //S_HOST.write(">");
           sHostPrint(">");
         }
       }
@@ -313,9 +431,83 @@ void processCommands()
 }
 
 /*************************************************************************
+ * Process extended key sequence
+ *************************************************************************/
+void processExtKey(void)
+{
+  // Not the E0 12 ext sequence
+  if (at_data_byte != 0x12)
+  {
+    xt_data_byte = AT2XTExt(at_data_byte);
+    // Found a corresponding ext code
+    if (xt_data_byte != 0x00)
+    {
+      ext_pressed = true;
+      // Send the E0
+      sendXtCode(at_data_prev);
+      delayMicroseconds(kbt.xt_next_delay);
+    }
+    else
+    {
+      xt_data_byte = AT2XTExtNav(at_data_byte);
+      // Found a corresponding ext nav code
+      if (xt_data_byte != 0x00)
+      {
+        ext_nav_pressed = true;
+        // Allow the ext keys?
+        if (ext_101_enabled)
+        {
+          // Send the E0
+          sendXtCode(at_data_prev);
+          delayMicroseconds(kbt.xt_next_delay);
+        }
+        else
+        {
+          // Strip the E0
+          ext_strip_pressed = true;
+        }
+      }
+      else
+      // See if the byte is one of the codes to have the E0 stripped
+      {
+        xt_data_byte = AT2XTExtStrip(at_data_byte);
+        // Found a corresponding ext code
+        if (xt_data_byte != 0x00)
+        {
+          // Strip the E0
+          ext_strip_pressed = true;
+        }
+      }
+    }
+  }
+  else
+  {
+    // PrintScreen/SysReq pressed
+    sysreq_key_pressed = true;
+
+    // Eat this key press as it is not a valid XT key
+    xt_data_byte = 0;
+  }
+
+  if (at_data_byte == 0x7C && sysreq_key_pressed)
+  {
+    // Eat this key press as it is not a valid XT key
+    xt_data_byte = 0;
+  }
+
+  LOG_HEX (xt_data_byte);
+  // Found a valid scan code?
+  if (xt_data_byte != 0x00)
+  {
+    // Send it!
+    sendXtCode(xt_data_byte);
+  }
+}
+
+/*************************************************************************
  * Main program logic for AT to XT scan code conversion
  *************************************************************************/
-void processKeyPress()
+void processKeyPress(void)
 {
   // Is there any data to process?
   if (at_data_ready)
@@ -328,264 +520,66 @@ void processKeyPress()
     pinMode(AT_CLK, OUTPUT);
     digitalWrite(AT_CLK, 0);
     
-    // Process data byte
-    // Handle special cases that will not be passed through first
-    switch(at_data_byte)
+    // Handle special cases
+    if (!checkSpecialCase())
     {
-      case 0xAA:
-        // BAT from KB
-        LOG ("\n");
-        LOG_HEX(at_data_byte);
-        LOG (" <BAT>\n\n");
-        break;
-
-      case 0xF0:
-        // Key release
-        if (ext_101_enabled)
+      // Not a special case
+      LOG_HEX (at_data_byte);
+      
+      // Current scan code is not the ext code
+      if (at_data_byte != 0xE0)
+      {
+        LOG("/");
+        // Is the previous scan code the ext code?
+        if (at_data_byte == 0xE1)
         {
-          if (at_data_prev == 0xE0)
-          {
-            sendXtCode(at_data_prev);
-            delayMicroseconds(kbt.xt_next_delay);
-          }
+          break_key_pressed = true;
         }
-        LOG_HEX (at_data_byte);
-        LOG ("\t");
-        key_release = true;
-        break;
 
-      case 0xFA:
-        // Ack from KB
-        LOG ("\n");
-        LOG_HEX(at_data_byte);
-        LOG (" <ACK>\n\n");
-        break;
-
-      default:
-        // Not a special case
-        LOG_HEX (at_data_byte);
-        
-        // Current scan code is not the ext code
-        if (at_data_byte != 0xE0)
+        if (at_data_prev == 0xE0)
         {
-          LOG ('/');
-          // Is the previous scan code the ext code?
-          if (at_data_byte == 0xE1)
+          processExtKey();
+        }
+        else
+        {
+          if (break_key_pressed)
           {
-            break_key_pressed = true;
-          }
-
-          if (at_data_prev == 0xE0)
-          {
-            // Not the E0 12 ext sequence
-            if (at_data_byte != 0x12)
-            {
-              xt_data_byte = AT2XTExt(at_data_byte);
-              // Found a corresponding ext code
-              if (xt_data_byte != 0x00)
-              {
-                ext_pressed = true;
-                // Send the E0
-                sendXtCode(at_data_prev);
-                delayMicroseconds(kbt.xt_next_delay);
-              }
-              else
-              {
-                xt_data_byte = AT2XTExtNav(at_data_byte);
-                // Found a corresponding ext nav code
-                if (xt_data_byte != 0x00)
-                {
-                  ext_nav_pressed = true;
-                  // Allow the ext keys?
-                  if (ext_101_enabled)
-                  {
-                    // Send the E0
-                    sendXtCode(at_data_prev);
-                    delayMicroseconds(kbt.xt_next_delay);
-                  }
-                  else
-                  {
-                    // Strip the E0
-                    ext_strip_pressed = true;
-                  }
-                }
-                else
-                // See if the byte is one of the codes to have the E0 stripped
-                {
-                  xt_data_byte = AT2XTExtStrip(at_data_byte);
-                  // Found a corresponding ext code
-                  if (xt_data_byte != 0x00)
-                  {
-                    // Strip the E0
-                    ext_strip_pressed = true;
-                  }
-                }
-              }
-            }
-            else
-            {
-              // PrintScreen/SysReq pressed
-              sysreq_key_pressed = true;
-
-              // Eat this key press as it is not a valid XT key
-              xt_data_byte = 0;
-            }
-
-            if (at_data_byte == 0x7C && sysreq_key_pressed)
-            {
-              // Eat this key press as it is not a valid XT key
-              xt_data_byte = 0;
-            }
-
-            LOG_HEX (xt_data_byte);
-            // Found a valid scan code?
-            if (xt_data_byte != 0x00)
-            {
-              // Send it!
-              sendXtCode(xt_data_byte);
-            }
+            xt_data_byte = 0;
           }
           else
           {
-            if (break_key_pressed)
+            xt_data_byte = AT2XT(at_data_byte);
+            if(xt_data_byte == 0)
             {
-              xt_data_byte = 0;
-            }
-            else
-            {
-              xt_data_byte = AT2XT(at_data_byte);
-              if(xt_data_byte == 0)
-              {
-                xt_data_byte = AT2XTExt(at_data_byte);
-              }
-            }
-
-            // Key released
-            if (at_data_prev == 0xF0 && !break_key_pressed)
-            {
-              // Is it an ext key?
-              if (ext_pressed)
-              {
-                // Reset the flag
-                ext_pressed = false;
-                // If it should not be stripped
-                if(!ext_strip_pressed)
-                {
-                  // Send the E0
-                  sendXtCode(0xE0);
-                  delayMicroseconds(kbt.xt_next_delay);
-                }
-              }
-              // Is it one of the ext navigation keys?
-              if (ext_nav_pressed)
-              {
-                // Reset the flag
-                ext_nav_pressed = false;
-                // Are we allowed to send the extended key press?
-                if (ext_101_enabled)
-                {
-                  // Send the E0
-                  sendXtCode(0xE0);
-                  delayMicroseconds(kbt.xt_next_delay);
-                }
-              }
-
-              // Check for (PrintScreen/SysReq)
-              if (sysreq_key_pressed)
-              {
-                if (at_data_byte == 0x12)
-                {
-                  sysreq_key_pressed = false;
-                }
-                // Eat this key press
-                xt_data_byte = 0;
-              }
-              else
-              {
-                // Set up for key release XT scan code
-                xt_data_byte = xt_data_byte + 0x80;
-              }
-            }
-
-            LOG_HEX (xt_data_byte);
-            // Do we have a valid scan code
-            if (xt_data_byte != 0)
-            {
-              sendXtCode(xt_data_byte);
-            }
-
-            // Handle the toggle keys that have LED's
-            switch(at_data_byte)
-            {
-              case 0x58:
-                // Caps lock
-                if (at_data_prev == 0xF0)
-                {
-                  if (bitRead(kb_leds, 2))
-                  {
-                    bitClear(kb_leds, 2);
-                  }
-                  else
-                  {
-                    bitSet(kb_leds, 2);
-                  }
-                }
-                break;
-
-              case 0x77:
-                // Num lock
-                if ((at_data_prev == 0xF0) && (!break_key_pressed))
-                {
-                  if (bitRead(kb_leds, 1))
-                  {
-                    bitClear(kb_leds, 1);
-                  }
-                  else
-                  {
-                    bitSet(kb_leds, 1);
-                  }
-                }
-                break;
-
-              case 0x7E:
-                // Scroll lock
-                if (at_data_prev == 0xF0)
-                {
-                  if (bitRead(kb_leds, 0))
-                  {
-                    bitClear(kb_leds, 0);
-                  }
-                  else
-                  {
-                    bitSet(kb_leds, 0);
-                  }
-                }
-                break;
-
-              default:
-                break;
-            }
-            if (at_data_prev == 0xF0 && at_data_byte == 0x77 && break_key_pressed)
-            {
-                // Clear break key flag
-                break_key_pressed = false;
-            }
-            // Has the keyboard LED states changed?
-            if(kb_leds != kb_leds_prev)
-            {
-              updateKbLeds();
-              kb_leds_prev = kb_leds;
+              xt_data_byte = AT2XTExt(at_data_byte);
             }
           }
+
+          processKeyRelease();
+
+          LOG_HEX (xt_data_byte);
+          // Do we have a valid scan code
+          if (xt_data_byte != 0)
+          {
+            sendXtCode(xt_data_byte);
+          }
+
+          updateLedStatus();
+
+          if (at_data_prev == 0xF0 && at_data_byte == 0x77 && break_key_pressed)
+          {
+              // Clear break key flag
+              break_key_pressed = false;
+          }
         }
-        LOG ("\t");
-        if (key_release)
-        {
-          LOG ("\n");
-          // Reset the flag
-          key_release = false;
-        }
-        break;
+      }
+      LOG ("\t");
+      if (key_release)
+      {
+        LOG ("\n");
+        // Reset the flag
+        key_release = false;
+      }
     }
 
     // Update AT data states/values
@@ -596,6 +590,59 @@ void processKeyPress()
     // Re-enable the keyboard to send data
     pinMode(AT_CLK, INPUT_PULLUP);
     isr_disabled = false;
+  }
+}
+
+/*************************************************************************
+ * Process key release actions
+ *************************************************************************/
+void processKeyRelease(void)
+{
+  // Key released
+  if (at_data_prev == 0xF0 && !break_key_pressed)
+  {
+    // Is it an ext key?
+    if (ext_pressed)
+    {
+      // Reset the flag
+      ext_pressed = false;
+      // If it should not be stripped
+      if(!ext_strip_pressed)
+      {
+        // Send the E0
+        sendXtCode(0xE0);
+        delayMicroseconds(kbt.xt_next_delay);
+      }
+    }
+    // Is it one of the ext navigation keys?
+    if (ext_nav_pressed)
+    {
+      // Reset the flag
+      ext_nav_pressed = false;
+      // Are we allowed to send the extended key press?
+      if (ext_101_enabled)
+      {
+        // Send the E0
+        sendXtCode(0xE0);
+        delayMicroseconds(kbt.xt_next_delay);
+      }
+    }
+
+    // Check for (PrintScreen/SysReq)
+    if (sysreq_key_pressed)
+    {
+      if (at_data_byte == 0x12)
+      {
+        sysreq_key_pressed = false;
+      }
+      // Eat this key press
+      xt_data_byte = 0;
+    }
+    else
+    {
+      // Set up for key release XT scan code
+      xt_data_byte = xt_data_byte + 0x80;
+    }
   }
 }
 
@@ -760,6 +807,71 @@ void updateKbLeds(void)
 }
 
 /*************************************************************************
+ * Update the keyboard LED status byte and LED's if changed
+ *************************************************************************/
+void updateLedStatus(void)
+{
+  // Handle the toggle keys that have LED's
+  switch(at_data_byte)
+  {
+    case 0x58:
+      // Caps lock
+      if (at_data_prev == 0xF0)
+      {
+        if (bitRead(kb_leds, 2))
+        {
+          bitClear(kb_leds, 2);
+        }
+        else
+        {
+          bitSet(kb_leds, 2);
+        }
+      }
+      break;
+
+    case 0x77:
+      // Num lock
+      if ((at_data_prev == 0xF0) && (!break_key_pressed))
+      {
+        if (bitRead(kb_leds, 1))
+        {
+          bitClear(kb_leds, 1);
+        }
+        else
+        {
+          bitSet(kb_leds, 1);
+        }
+      }
+      break;
+
+    case 0x7E:
+      // Scroll lock
+      if (at_data_prev == 0xF0)
+      {
+        if (bitRead(kb_leds, 0))
+        {
+          bitClear(kb_leds, 0);
+        }
+        else
+        {
+          bitSet(kb_leds, 0);
+        }
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  // Has the keyboard LED states changed?
+  if(kb_leds != kb_leds_prev)
+  {
+    updateKbLeds();
+    kb_leds_prev = kb_leds;
+  }
+}
+
+/*************************************************************************
  * Interrupt Service Routine
  *************************************************************************/
 void INT1_ISR(void)
@@ -810,48 +922,6 @@ void INT1_ISR(void)
     {
       // Turn off AT_CLK LED
       digitalWrite(LED_AT_CLK, LOW);
-    }
-  }
-}
-
-/*************************************************************************
- * Sample function for use with the dev board
- *************************************************************************/
-void checkDevOptions(void)
-{
-  if(board_type == B_DEV)
-  {
-    if (analogRead(A0) < 128)
-    {
-      digitalWrite(LED_AT_CLK, HIGH);
-    }
-    else
-    {
-      digitalWrite(LED_AT_CLK, LOW);
-    }
-    if (analogRead(A1) < 128)
-    {
-      digitalWrite(LED_AT_DATA, HIGH);
-    }
-    else
-    {
-      digitalWrite(LED_AT_DATA, LOW);
-    }
-    if (analogRead(A2) < 128)
-    {
-      digitalWrite(LED_XT_CLK, HIGH);
-    }
-    else
-    {
-      digitalWrite(LED_XT_CLK, LOW);
-    }
-    if (analogRead(A3) < 128)
-    {
-      digitalWrite(LED_XT_DATA, HIGH);
-    }
-    else
-    {
-      digitalWrite(LED_XT_DATA, LOW);
     }
   }
 }

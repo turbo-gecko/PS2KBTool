@@ -23,7 +23,7 @@
  *************************************************************************/
 
 // Software info
-//const String  VERSION                 = "00.04.02";
+const String  VERSION           = "01.00.00";
 
 // Host board type
 #define B_STD                   1       // Standard board with no LED's or dev options switches
@@ -47,17 +47,17 @@
 #define S_DEF_CHAR_DELAY        0       // Default host inter character delay im mSec
 #define S_DEF_LINE_DELAY        0       // Default host inter line delay in mSec
 #define S_DEF_XON_XOFF          0       // Default value of 1 means enabled
-#define S_DEF_SERIAL_ENABLED    1       // Default value of 1 means enabled
+#define S_DEF_SERIAL_ENABLED    0       // Default value of 1 means enabled
 
 // Default keyboard definitions
 #define K_DEF_EXT_KEYS_ENABLED  0       // Default value of 1 means enabled
 #define K_DEF_BOARD_TYPE        1       // Default value of 1 for the standard board
 
-#define K_DEF_AT_BIT_DELAY      30      // Half AT_CLK bit time
+#define K_DEF_AT_BIT_DELAY      30      // AT_CLK bit time delay (per clock state)
 #define K_DEF_AT_NEXT_DELAY     3       // Wait period after sending byte to the AT keyboard
 #define K_DEF_AT_START_DELAY    5       // Settling period after changing AT_CLK before changing AT_DATA
 
-#define K_DEF_XT_BIT_DELAY      30      // Half XT_CLK bit time
+#define K_DEF_XT_BIT_DELAY      30      // XT_CLK bit time delay (per clock state)
 #define K_DEF_XT_NEXT_DELAY     100     // Wait period after sending byte to the XT keyboard
 #define K_DEF_XT_START_DELAY    5       // Settling period after changing XT_CLK before changing XT_DATA
 
